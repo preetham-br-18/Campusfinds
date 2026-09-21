@@ -1,0 +1,6 @@
+{
+  "name": "CampusFind",
+  "description": "AI-Powered Campus Lost & Found Platform. Lost it? Find it. Found it? Return it. Connects students and faculty across campus to report, search, AI-match, and verify claims for lost and found items.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

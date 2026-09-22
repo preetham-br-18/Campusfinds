@@ -22,7 +22,7 @@ import { PrivacyPage } from './components/pages/PrivacyPage';
 import { TermsPage } from './components/pages/TermsPage';
 
 import { getUserNotificationsFromFirestore } from './lib/firestoreService';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Search, CheckCircle2 } from 'lucide-react';
 
 function AppContent() {
   const { currentUser } = useAuth();
@@ -116,8 +116,8 @@ function AppContent() {
         openAuthModal={() => setAuthModalOpen(true)}
       />
 
-      {/* Main Content View */}
-      <main className="flex-1">
+      {/* Main Content View with mobile safe bottom clearance */}
+      <main className="flex-1 pb-24 md:pb-8">
         {route === 'home' && (
           <HomePage navigate={navigate} openAuthModal={() => setAuthModalOpen(true)} />
         )}
@@ -194,51 +194,69 @@ function AppContent() {
       {/* Auth Modal */}
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
-      {/* Mobile Report Selection Modal */}
+      {/* Mobile Report Selection Bottom Sheet */}
       {reportPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          {/* Backdrop click to dismiss */}
+          <div className="fixed inset-0" onClick={() => setReportPickerOpen(false)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl p-6 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] z-10 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200">
+            {/* Native Mobile Sheet Grab Handle */}
+            <div className="sm:hidden w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto -mt-2 mb-2" />
+
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-base text-slate-900 dark:text-white font-display">
                 Report Campus Property
               </h3>
               <button
                 onClick={() => setReportPickerOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800"
+                aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <button
+                id="mobile-sheet-report-lost"
                 onClick={() => {
                   setReportPickerOpen(false);
                   navigate('report-lost');
                 }}
-                className="w-full p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-left hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors group"
+                className="w-full p-4 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/70 text-left hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all active:scale-[0.98] group flex items-start space-x-3.5 touch-manipulation min-h-[64px]"
               >
-                <h4 className="font-bold text-rose-700 dark:text-rose-300 text-sm">
-                  I Lost Something
-                </h4>
-                <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">
-                  Report missing belongings so peers can find and return them
-                </p>
+                <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                  <Search className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-rose-700 dark:text-rose-300 text-sm">
+                    I Lost Something
+                  </h4>
+                  <p className="text-xs text-rose-600/90 dark:text-rose-400/90 mt-0.5 leading-snug">
+                    Report missing belongings so peers can find and return them
+                  </p>
+                </div>
               </button>
 
               <button
+                id="mobile-sheet-report-found"
                 onClick={() => {
                   setReportPickerOpen(false);
                   navigate('report-found');
                 }}
-                className="w-full p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-left hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors group"
+                className="w-full p-4 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/70 text-left hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all active:scale-[0.98] group flex items-start space-x-3.5 touch-manipulation min-h-[64px]"
               >
-                <h4 className="font-bold text-emerald-700 dark:text-emerald-300 text-sm">
-                  I Found Something
-                </h4>
-                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
-                  Report recovered property to match with the rightful owner
-                </p>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-emerald-700 dark:text-emerald-300 text-sm">
+                    I Found Something
+                  </h4>
+                  <p className="text-xs text-emerald-600/90 dark:text-emerald-400/90 mt-0.5 leading-snug">
+                    Report recovered property to match with the rightful owner
+                  </p>
+                </div>
               </button>
             </div>
           </div>

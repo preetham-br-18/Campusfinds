@@ -38,6 +38,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'relevant'>('newest');
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -139,8 +140,8 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         </p>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Search Input Bar & Mobile Filter Trigger */}
+      <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1">
           <Search className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-400" />
           <input
@@ -149,21 +150,50 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search items by keywords, color, brand, or location..."
-            className="w-full pl-10 pr-10 py-2.5 text-sm rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            className="w-full pl-10 pr-10 py-3 sm:py-2.5 text-base sm:text-sm rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+              aria-label="Clear search"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Sort dropdown */}
-        <div className="flex items-center space-x-2 shrink-0">
-          <ArrowUpDown className="w-4 h-4 text-slate-400 hidden sm:block" />
+        {/* Mobile Filter Button (visible on mobile screens) */}
+        <div className="flex items-center space-x-2 sm:hidden">
+          <button
+            id="mobile-filter-open-btn"
+            onClick={() => setMobileFilterOpen(true)}
+            className="flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm font-semibold shadow-xs active:scale-98 touch-manipulation min-h-[46px]"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-theme-main" />
+            <span>Refine Filters</span>
+            {(categoryFilter !== 'all' || locationFilter !== 'all' || statusFilter !== 'all') && (
+              <span className="w-5 h-5 rounded-full bg-theme-main text-white text-[11px] font-bold flex items-center justify-center ml-1">
+                {(categoryFilter !== 'all' ? 1 : 0) + (locationFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0)}
+              </span>
+            )}
+          </button>
+
+          <select
+            id="mobile-sort-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="py-3 px-3 text-xs font-semibold rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-[46px]"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="relevant">Relevant</option>
+          </select>
+        </div>
+
+        {/* Desktop Sort dropdown */}
+        <div className="hidden sm:flex items-center space-x-2 shrink-0">
+          <ArrowUpDown className="w-4 h-4 text-slate-400" />
           <select
             id="sort-select"
             value={sortBy}
@@ -177,13 +207,13 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         </div>
       </div>
 
-      {/* Filter Chips Bar */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-b border-slate-200 dark:border-slate-800 pb-4">
-        {/* Type Toggle */}
-        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
+      {/* Horizontal One-Tap Category Chips (Mobile-First scrollable row) */}
+      <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1">
+        {/* Quick Type segmented pills */}
+        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold shrink-0">
           <button
             onClick={() => setTypeFilter('all')}
-            className={`px-3 py-1 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all min-h-[32px] ${
               typeFilter === 'all'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400'
@@ -193,7 +223,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           </button>
           <button
             onClick={() => setTypeFilter('lost')}
-            className={`px-3 py-1 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all min-h-[32px] ${
               typeFilter === 'lost'
                 ? 'bg-rose-600 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'
@@ -203,7 +233,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           </button>
           <button
             onClick={() => setTypeFilter('found')}
-            className={`px-3 py-1 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all min-h-[32px] ${
               typeFilter === 'found'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'
@@ -213,6 +243,37 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           </button>
         </div>
 
+        {/* Category Pills */}
+        <button
+          onClick={() => setCategoryFilter('all')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 min-h-[36px] ${
+            categoryFilter === 'all'
+              ? 'bg-theme-main text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          All Categories
+        </button>
+        {DEFAULT_CATEGORIES.map((cat) => {
+          const isSelected = categoryFilter === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(isSelected ? 'all' : cat)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 min-h-[36px] ${
+                isSelected
+                  ? 'bg-theme-main text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {cat}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desktop Filter Chips Bar (hidden on small mobile screens to keep UI clutter-free) */}
+      <div className="hidden sm:flex flex-wrap items-center gap-2 pt-1 border-b border-slate-200 dark:border-slate-800 pb-4">
         {/* Status Dropdown */}
         <select
           value={statusFilter}
@@ -223,18 +284,6 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           <option value="open">Open (Active)</option>
           <option value="claimed">Claim In Progress</option>
           <option value="returned">Returned to Owner</option>
-        </select>
-
-        {/* Category Dropdown */}
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
-        >
-          <option value="all">Category: All Categories</option>
-          {DEFAULT_CATEGORIES.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
         </select>
 
         {/* Location Dropdown */}
@@ -258,6 +307,93 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           </button>
         )}
       </div>
+
+      {/* Mobile Filter Bottom Sheet */}
+      {mobileFilterOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:hidden bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="fixed inset-0" onClick={() => setMobileFilterOpen(false)} />
+          <div className="relative w-full bg-white dark:bg-slate-900 rounded-t-3xl p-6 border-t border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] z-10 animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto">
+            {/* Grab handle */}
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto -mt-2 mb-2" />
+
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center space-x-2">
+                <SlidersHorizontal className="w-4 h-4 text-theme-main" />
+                <span>Refine Directory</span>
+              </h3>
+              <button
+                onClick={() => setMobileFilterOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 bg-slate-100 dark:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter controls */}
+            <div className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                  Item Status
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'all', label: 'All Statuses' },
+                    { id: 'open', label: 'Open / Active' },
+                    { id: 'claimed', label: 'Claim In Progress' },
+                    { id: 'returned', label: 'Returned to Owner' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setStatusFilter(s.id as any)}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all ${
+                        statusFilter === s.id
+                          ? 'border-theme-main bg-theme-subtle text-theme-main font-bold'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                  Campus Location
+                </label>
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="w-full px-3.5 py-3 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                >
+                  <option value="all">All Campus Locations</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white min-h-[46px]"
+                >
+                  Reset All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(false)}
+                  className="flex-1 py-3 px-4 rounded-xl gradient-theme-bg text-white text-xs font-bold shadow-theme-glow min-h-[46px]"
+                >
+                  Show Results ({filteredItems.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results Count */}
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">

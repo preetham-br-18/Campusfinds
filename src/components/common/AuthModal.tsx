@@ -79,12 +79,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 overflow-hidden max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 overflow-hidden max-h-[90vh] overflow-y-auto">
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+
         <button
           id="close-auth-modal-btn"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors touch-manipulation min-w-[36px] min-h-[36px] flex items-center justify-center"
         >
           <X className="w-5 h-5" />
         </button>
@@ -118,7 +121,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   Full Name *
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <User className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                   <input
                     id="auth-name-input"
                     type="text"
@@ -126,7 +129,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Preetham B R"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
                   />
                 </div>
               </div>
@@ -140,8 +143,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="text"
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Computer Science"
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. CS"
+                    className="w-full px-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
                   />
                 </div>
                 <div>
@@ -153,7 +156,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={year}
                     onChange={(e) => setYear(e.target.value)}
                     placeholder="e.g. 3rd Year"
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
                   />
                 </div>
               </div>
@@ -163,13 +166,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   College / Institution Name
                 </label>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <Building2 className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                   <input
                     type="text"
                     value={college}
                     onChange={(e) => setCollege(e.target.value)}
                     placeholder="e.g. University Institute of Technology"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
                   />
                 </div>
               </div>
@@ -183,7 +186,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
                   placeholder="Will remain private and unexposed"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
                 />
               </div>
             </>
@@ -194,7 +197,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Email Address *
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
               <input
                 id="auth-email-input"
                 type="email"
@@ -202,7 +205,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@college.edu"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
               />
             </div>
           </div>
@@ -212,7 +215,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Password *
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
               <input
                 id="auth-password-input"
                 type="password"
@@ -220,7 +223,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
               />
             </div>
           </div>
@@ -229,7 +232,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             id="auth-submit-btn"
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 btn-theme disabled:opacity-50 font-semibold text-sm rounded-xl shadow-theme-glow transition-all mt-2"
+            className="w-full py-3.5 sm:py-2.5 px-4 btn-theme disabled:opacity-50 font-bold text-sm rounded-xl shadow-theme-glow transition-all mt-2 touch-manipulation min-h-[46px] active:scale-[0.98]"
           >
             {loading ? 'Authenticating...' : mode === 'login' ? 'Sign In to CampusFind' : 'Create Account'}
           </button>
@@ -249,7 +252,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           type="button"
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full py-2 px-4 border border-slate-300 dark:border-slate-700 rounded-xl font-medium text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center space-x-2 transition-colors"
+          className="w-full py-3 sm:py-2 px-4 border border-slate-300 dark:border-slate-700 rounded-xl font-medium text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center space-x-2 transition-colors touch-manipulation min-h-[46px]"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -280,7 +283,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode(mode === 'login' ? 'register' : 'login');
               setError(null);
             }}
-            className="text-xs text-theme-main hover:underline font-medium"
+            className="text-xs text-theme-main hover:underline font-medium min-h-[36px] py-1 inline-flex items-center touch-manipulation"
           >
             {mode === 'login'
               ? "Don't have an account? Sign up with campus details"

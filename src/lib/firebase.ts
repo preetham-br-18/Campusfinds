@@ -46,8 +46,24 @@ export interface FirestoreErrorInfo {
   };
 }
 
+export function isOfflineError(error: unknown): boolean {
+  if (!error) return false;
+  const msg = error instanceof Error ? error.message : String(error);
+  const code = (error as any)?.code;
+  return (
+    code === 'unavailable' ||
+    code === 'failed-precondition' ||
+    msg.includes('offline') ||
+    msg.includes('unavailable') ||
+    msg.includes('network') ||
+    msg.includes('the client is offline') ||
+    msg.includes('Client is offline')
+  );
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
   const currentAuth = auth.currentUser;
+  const isOffline = isOfflineError(error);
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -64,7 +80,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error:', JSON.stringify(errInfo));
+  if (isOffline) {
+    console.warn('Firestore operation offline/unavailable:', JSON.stringify(errInfo));
+  } else {
+    console.error('Firestore Error:', JSON.stringify(errInfo));
+  }
   throw new Error(JSON.stringify(errInfo));
 }
 

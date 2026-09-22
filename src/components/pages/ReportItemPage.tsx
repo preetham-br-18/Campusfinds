@@ -353,14 +353,14 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {imagePreviews.map((url, idx) => (
               <div key={idx} className="relative h-28 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
                 <img src={url} alt="Item preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removeImage(idx)}
-                  className="absolute top-1.5 right-1.5 p-1 rounded-full bg-slate-900/70 text-white hover:bg-slate-900"
+                  className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-slate-900/80 text-white hover:bg-slate-900 touch-manipulation min-w-[28px] min-h-[28px] flex items-center justify-center"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -371,10 +371,11 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="h-28 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-theme-main flex flex-col items-center justify-center text-slate-400 hover:text-theme-main transition-colors"
+                className="h-28 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-theme-main flex flex-col items-center justify-center text-slate-500 hover:text-theme-main transition-colors touch-manipulation active:scale-95"
               >
-                <UploadCloud className="w-6 h-6 mb-1" />
-                <span className="text-[11px] font-semibold">Upload Photo</span>
+                <Camera className="w-6 h-6 mb-1 text-slate-400 group-hover:text-theme-main" />
+                <span className="text-[11px] font-bold">Snap or Upload</span>
+                <span className="text-[9px] text-slate-400">Camera / Files</span>
               </button>
             )}
           </div>
@@ -382,7 +383,7 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png, image/jpeg, image/webp"
+            accept="image/*"
             multiple
             onChange={handleFileSelection}
             className="hidden"
@@ -409,27 +410,49 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Black Sony WH-1000XM4 Headphones, Student ID Card, Hydro Flask"
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Category *
               </label>
-              <select
-                id="report-category-select"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {DEFAULT_CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+              <span className="text-[11px] text-slate-400">Tap to select</span>
             </div>
 
+            {/* Quick 1-tap category chips for mobile */}
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {DEFAULT_CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all touch-manipulation min-h-[34px] ${
+                    category === cat
+                      ? 'bg-theme-main text-white font-bold shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <select
+              id="report-category-select"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3.5 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
+            >
+              {DEFAULT_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
                 Campus Location *
@@ -438,45 +461,43 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
                 id="report-location-select"
                 value={locationId}
                 onChange={handleLocationChange}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
               >
                 {locations.map(loc => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
                 Date of Incident *
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <Calendar className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                 <input
                   type="date"
                   required
                   value={dateOfIncident}
                   onChange={(e) => setDateOfIncident(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-3 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
                 />
               </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
-                Approximate Time (Optional)
-              </label>
-              <div className="relative">
-                <Clock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="time"
-                  value={timeOfIncident}
-                  onChange={(e) => setTimeOfIncident(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+              Approximate Time (Optional)
+            </label>
+            <div className="relative">
+              <Clock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+              <input
+                type="time"
+                value={timeOfIncident}
+                onChange={(e) => setTimeOfIncident(e.target.value)}
+                className="w-full pl-10 pr-3 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
+              />
             </div>
           </div>
 
@@ -491,7 +512,7 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe color, general condition, case type, or visible accessories. Do NOT include secret passcodes or private IDs."
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
             />
           </div>
 
@@ -504,7 +525,7 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
               <select
                 value={currentPossession}
                 onChange={(e) => setCurrentPossession(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
               >
                 <option value="With finder">Kept securely with me (Finder)</option>
                 <option value="Campus Security Office">Deposited at Campus Security Office</option>
@@ -530,17 +551,17 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
               value={secretIdentifyingDetails}
               onChange={(e) => setSecretIdentifyingDetails(e.target.value)}
               placeholder="e.g. 'Blue astronaut sticker behind the phone case' or 'Silver initials PB on zipper'"
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 text-base sm:text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
         {/* Submit action */}
-        <div className="flex items-center justify-end space-x-3">
+        <div className="flex flex-col-reverse sm:flex-row items-center sm:justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={() => navigate('home')}
-            className="px-5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            className="w-full sm:w-auto py-3.5 sm:py-2.5 px-6 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 touch-manipulation min-h-[46px]"
           >
             Cancel
           </button>
@@ -548,7 +569,7 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
             id="publish-report-btn"
             type="submit"
             disabled={uploading}
-            className={`px-7 py-2.5 text-xs font-bold rounded-xl text-white shadow-md transition-all ${
+            className={`w-full sm:w-auto py-4 sm:py-2.5 px-8 text-xs font-bold rounded-xl text-white shadow-md transition-all active:scale-[0.98] touch-manipulation min-h-[48px] ${
               type === 'lost'
                 ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
                 : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'

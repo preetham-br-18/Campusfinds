@@ -9,7 +9,7 @@ import {
   updateProfile as fbUpdateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, googleProvider, handleFirestoreError, OperationType } from './firebase';
+import { auth, db, googleProvider, handleFirestoreError, isOfflineError, OperationType } from './firebase';
 import { UserProfile, UserRole } from '../types';
 
 interface AuthContextType {
@@ -49,6 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (user: User): Promise<UserProfile | null> => {
+    const cacheKey = `campusfind_user_profile_${user.uid}`;
+    let cachedProfile: UserProfile | null = null;
+    try {
+      const stored = localStorage.getItem(cacheKey);
+      if (stored) {
+        cachedProfile = JSON.parse(stored);
+      }
+    } catch {
+      // ignore
+    }
+
     try {
       const userRef = doc(db, 'users', user.uid);
       const snapshot = await getDoc(userRef);
@@ -58,13 +69,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isAdminEmail = user.email && PRECONFIGURED_ADMIN_EMAILS.includes(user.email.toLowerCase());
         if (isAdminEmail && data.role === 'student') {
           data.role = 'admin';
-          await updateDoc(userRef, { role: 'admin', updatedAt: new Date().toISOString() });
+          try {
+            await updateDoc(userRef, { role: 'admin', updatedAt: new Date().toISOString() });
+          } catch {
+            // offline ignore
+          }
+        }
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {
+          // ignore
         }
         return data;
       } else {
         // First-time profile creation (e.g. from Google login)
         const isAdminEmail = user.email && PRECONFIGURED_ADMIN_EMAILS.includes(user.email.toLowerCase());
-        const newProfile: UserProfile = {
+        const newProfile: UserProfile = cachedProfile || {
           uid: user.uid,
           name: user.displayName || user.email?.split('@')[0] || 'Campus User',
           email: user.email || '',
@@ -74,22 +94,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        await setDoc(userRef, newProfile);
+        try {
+          await setDoc(userRef, newProfile);
+        } catch {
+          // offline ignore
+        }
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(newProfile));
+        } catch {
+          // ignore
+        }
         return newProfile;
       }
     } catch (error) {
-      console.error('Error fetching or creating user profile:', error);
-      // Fallback in-memory profile
+      const isOffline = isOfflineError(error);
+      if (isOffline) {
+        console.warn('Firestore is currently offline. Operating in reliable local-storage mode for user profile.');
+      } else {
+        console.warn('Notice when fetching user profile, using local fallback:', error);
+      }
+
+      if (cachedProfile) {
+        return cachedProfile;
+      }
+
+      // Fallback profile
       const isAdminEmail = user.email && PRECONFIGURED_ADMIN_EMAILS.includes(user.email.toLowerCase());
-      return {
+      const fallbackProfile: UserProfile = {
         uid: user.uid,
         name: user.displayName || user.email?.split('@')[0] || 'Campus User',
         email: user.email || '',
         role: isAdminEmail ? 'admin' : 'student',
         isActive: true,
+        photoURL: user.photoURL || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(fallbackProfile));
+      } catch {
+        // ignore
+      }
+      return fallbackProfile;
     }
   };
 
@@ -138,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (e instanceof Error && e.message.includes('allowed to register')) {
         throw e;
       }
-      // Continue if settings not found
+      // Continue if settings not found or offline
     }
 
     const cred = await createUserWithEmailAndPassword(auth, data.email.trim(), data.pass);
@@ -159,11 +205,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString()
     };
 
+    const cacheKey = `campusfind_user_profile_${cred.user.uid}`;
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(newProfile));
+    } catch {
+      // ignore
+    }
+    setProfile(newProfile);
+
     try {
       await setDoc(doc(db, 'users', cred.user.uid), newProfile);
-      setProfile(newProfile);
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, `users/${cred.user.uid}`);
+      if (!isOfflineError(err)) {
+        handleFirestoreError(err, OperationType.CREATE, `users/${cred.user.uid}`);
+      }
     }
   };
 
@@ -182,16 +237,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     if (!currentUser) return;
+    const cacheKey = `campusfind_user_profile_${currentUser.uid}`;
     const userRef = doc(db, 'users', currentUser.uid);
     const updated = {
       ...updates,
       updatedAt: new Date().toISOString()
     };
+
+    setProfile(prev => {
+      const next = prev ? { ...prev, ...updated } : ({ uid: currentUser.uid, ...updated } as UserProfile);
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+
     try {
       await updateDoc(userRef, updated);
-      setProfile(prev => prev ? { ...prev, ...updated } : null);
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
+      if (!isOfflineError(err)) {
+        handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
+      }
     }
   };
 

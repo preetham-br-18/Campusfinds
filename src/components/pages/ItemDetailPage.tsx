@@ -130,14 +130,33 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Back button */}
-      <button
-        onClick={() => navigate('search')}
-        className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-theme-main transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back to Directory</span>
-      </button>
+      {/* Back button with generous touch target */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('search')}
+          className="inline-flex items-center space-x-2 py-2 px-3 -ml-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-theme-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors touch-manipulation min-h-[44px]"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Directory</span>
+        </button>
+
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={handleShare}
+            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all touch-manipulation"
+            title="Share item"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsAbuseModalOpen(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all touch-manipulation"
+            title="Report inappropriate listing"
+          >
+            <Flag className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
       {actionMessage && (
         <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center space-x-2">
@@ -389,6 +408,52 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           </p>
         </section>
       )}
+
+      {/* Mobile Sticky Floating Action Bar */}
+      <div className="md:hidden fixed bottom-16 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-30 shadow-lg">
+        {isOwner ? (
+          <div className="flex space-x-2">
+            {item.status !== 'returned' && (
+              <button
+                id="mobile-sticky-returned-btn"
+                onClick={handleMarkReturned}
+                className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 touch-manipulation min-h-[46px]"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Mark Returned</span>
+              </button>
+            )}
+            <button
+              onClick={() => navigate('claims')}
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs active:bg-slate-100 dark:active:bg-slate-800 touch-manipulation min-h-[46px]"
+            >
+              View Claims
+            </button>
+          </div>
+        ) : item.status === 'returned' ? (
+          <div className="py-2 text-center text-xs font-semibold text-slate-500">
+            This item has been returned to its owner.
+          </div>
+        ) : (
+          <button
+            id="mobile-sticky-claim-btn"
+            onClick={() => {
+              if (!currentUser) openAuthModal();
+              else setIsClaimModalOpen(true);
+            }}
+            className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm text-white shadow-md flex items-center justify-center space-x-2 active:scale-98 transition-all touch-manipulation min-h-[48px] ${
+              item.type === 'found'
+                ? 'btn-theme'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+            }`}
+          >
+            <Lock className="w-4 h-4" />
+            <span>
+              {item.type === 'found' ? 'I Think This Is Mine (Submit Claim)' : 'I Found This Item (Contact Finder)'}
+            </span>
+          </button>
+        )}
+      </div>
 
       {/* Claim Modal */}
       <ClaimModal

@@ -70,25 +70,28 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 overflow-hidden max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 overflow-hidden max-h-[88vh] overflow-y-auto">
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+
         <button
           id="close-claim-modal-btn"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors touch-manipulation min-w-[36px] min-h-[36px] flex items-center justify-center"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+        <div className="flex items-center space-x-3 mb-4 pr-8">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <Lock className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white font-display">
+            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white font-display">
               {item.type === 'found' ? 'Claim Ownership of Found Item' : 'Report Found Matching Item'}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[240px]">
               Item: <span className="font-medium text-slate-700 dark:text-slate-200">{item.title}</span>
             </p>
           </div>
@@ -100,7 +103,7 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
             <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>Ownership Verification Required</span>
           </div>
-          <p className="text-amber-800 dark:text-amber-400 leading-relaxed">
+          <p className="text-amber-800 dark:text-amber-400 leading-relaxed text-[11px]">
             To prevent false claims and protect students' property, you must describe distinctive characteristics that only the rightful owner would know (e.g., specific scratches, lock screen wallpaper, inside contents, serial number suffix, keychain initials, etc.).
           </p>
         </div>
@@ -115,7 +118,7 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
               <span>Unique Identifying Feature *</span>
-              <span className="text-[11px] font-normal text-slate-500">e.g. "Small scratch on the bottom left corner"</span>
+              <span className="text-[11px] font-normal text-slate-500 hidden sm:inline">e.g. "Small scratch on the bottom left corner"</span>
             </label>
             <textarea
               id="claim-verification-input"
@@ -124,7 +127,7 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
               value={verificationAnswer}
               onChange={(e) => setVerificationAnswer(e.target.value)}
               placeholder="Describe one or more specific details that prove ownership (markings, stickers, secret pockets, serial number fragment, etc.)"
-              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -137,24 +140,24 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
               value={additionalDetails}
               onChange={(e) => setAdditionalDetails(e.target.value)}
               placeholder="e.g. When and where you last remember holding it"
-              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
             />
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-400 space-y-1">
             <p className="font-semibold text-slate-800 dark:text-slate-200">What happens after you submit:</p>
-            <ol className="list-decimal list-inside space-y-0.5">
+            <ol className="list-decimal list-inside space-y-0.5 text-[11px]">
               <li>The finder or campus administrator will review your verification answer.</li>
               <li>Once accepted, private in-app chat is unlocked to arrange secure campus handover.</li>
               <li>Official handover points (Security Office, Central Reception) are strongly recommended.</li>
             </ol>
           </div>
 
-          <div className="flex items-center justify-end space-x-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row items-center sm:justify-end gap-2.5 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="w-full sm:w-auto py-3 sm:py-2 px-5 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation min-h-[44px]"
             >
               Cancel
             </button>
@@ -162,7 +165,7 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
               id="submit-claim-request-btn"
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-xs font-semibold rounded-xl btn-theme disabled:opacity-50 text-white shadow-theme-glow flex items-center space-x-1.5"
+              className="w-full sm:w-auto py-3.5 sm:py-2 px-6 text-xs font-bold rounded-xl btn-theme disabled:opacity-50 text-white shadow-theme-glow flex items-center justify-center space-x-1.5 touch-manipulation min-h-[46px]"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{loading ? 'Submitting...' : 'Submit Claim for Review'}</span>

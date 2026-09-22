@@ -19,7 +19,6 @@ import {
 import { useAuth } from '../../lib/authContext';
 import { useTheme } from '../../lib/themeContext';
 import { APP_NAME, APP_TAGLINE } from '../../lib/constants';
-import { ThemeSelector } from './ThemeSelector';
 
 interface NavbarProps {
   activeRoute: string;
@@ -133,9 +132,21 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right Action Icons */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            {/* Theme & Palette Selector */}
-            <ThemeSelector />
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            {/* Quick 1-Click Dark/Light Mode Switcher */}
+            <button
+              id="theme-quick-toggle-btn"
+              onClick={toggleTheme}
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95 touch-manipulation"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle theme mode"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-700" />
+              )}
+            </button>
 
             {/* Notifications */}
             {currentUser && (

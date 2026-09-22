@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type ThemeMode = 'light' | 'dark';
-export type Palette = 'indigo' | 'emerald' | 'violet';
+export type Palette = 'indigo';
 
 export interface PaletteOption {
   id: Palette;
@@ -13,35 +13,18 @@ export interface PaletteOption {
   dotColor: string;
 }
 
-export const PALETTES: PaletteOption[] = [
-  {
-    id: 'indigo',
-    name: 'Cyber Indigo',
-    subtitle: 'Electric tech campus & high contrast',
-    primaryColor: '#2563eb',
-    accentColor: '#06b6d4',
-    gradient: 'from-blue-600 to-cyan-500',
-    dotColor: 'bg-blue-600',
-  },
-  {
-    id: 'emerald',
-    name: 'Emerald Quad',
-    subtitle: 'University park & safety recovery',
-    primaryColor: '#059669',
-    accentColor: '#10b981',
-    gradient: 'from-emerald-600 to-teal-500',
-    dotColor: 'bg-emerald-600',
-  },
-  {
-    id: 'violet',
-    name: 'Royal Amethyst',
-    subtitle: 'Twilight velvet & creative distinction',
-    primaryColor: '#7c3aed',
-    accentColor: '#ec4899',
-    gradient: 'from-violet-600 to-pink-500',
-    dotColor: 'bg-violet-600',
-  },
-];
+// Single best theme: Cyber Indigo (Collegiate Tech Blue with Cyan Accent)
+export const BEST_PALETTE: PaletteOption = {
+  id: 'indigo',
+  name: 'Campus Blue & Cyan',
+  subtitle: 'High-contrast collegiate tech accent',
+  primaryColor: '#2563eb',
+  accentColor: '#06b6d4',
+  gradient: 'from-blue-600 to-cyan-500',
+  dotColor: 'bg-blue-600',
+};
+
+export const PALETTES: PaletteOption[] = [BEST_PALETTE];
 
 interface ThemeContextType {
   theme: ThemeMode;
@@ -65,15 +48,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  const [palette, setPaletteState] = useState<Palette>(() => {
-    try {
-      const saved = localStorage.getItem('campusfind_palette') as Palette;
-      if (PALETTES.some(p => p.id === saved)) return saved;
-      return 'indigo';
-    } catch (e) {
-      return 'indigo';
-    }
-  });
+  const palette: Palette = 'indigo';
 
   useEffect(() => {
     try {
@@ -87,17 +62,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       root.classList.remove('dark');
     }
+    // Lock document palette to best theme
+    root.setAttribute('data-palette', 'indigo');
   }, [theme]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('campusfind_palette', palette);
-    } catch (e) {
-      // quiet fallback
-    }
-    const root = document.documentElement;
-    root.setAttribute('data-palette', palette);
-  }, [palette]);
 
   const toggleTheme = () => {
     setThemeState(prev => (prev === 'light' ? 'dark' : 'light'));
@@ -107,8 +74,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(newTheme);
   };
 
-  const setPalette = (newPalette: Palette) => {
-    setPaletteState(newPalette);
+  const setPalette = () => {
+    // Locked to best theme
   };
 
   return (

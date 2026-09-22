@@ -20,7 +20,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       {/* Hero */}
       <div className="text-center space-y-3">
-        <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20 font-bold text-2xl font-display">
+        <div className="w-14 h-14 rounded-2xl gradient-theme-bg text-white flex items-center justify-center mx-auto shadow-theme-glow font-bold text-2xl font-display">
           CF
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white font-display">
@@ -59,7 +59,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
           </div>
 
           <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 font-bold flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-xl bg-theme-subtle text-theme-main font-bold flex items-center justify-center text-sm">
               2
             </div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">AI Similarity Matching</h4>
@@ -81,9 +81,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
       </div>
 
       {/* Trust & Safety Rules */}
-      <div className="p-8 rounded-3xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 space-y-4">
-        <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300">
-          <ShieldCheck className="w-6 h-6 text-blue-600" />
+      <div className="p-8 rounded-3xl bg-theme-subtle border border-theme-subtle space-y-4">
+        <div className="flex items-center space-x-2 text-theme-main">
+          <ShieldCheck className="w-6 h-6 text-theme-main" />
           <h3 className="font-bold text-lg font-display">Campus Safety Principles</h3>
         </div>
         <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed list-disc list-inside">

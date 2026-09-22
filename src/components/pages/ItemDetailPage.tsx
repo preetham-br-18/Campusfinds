@@ -118,7 +118,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         </p>
         <button
           onClick={() => navigate('search')}
-          className="px-4 py-2 text-xs font-semibold rounded-xl bg-blue-600 text-white"
+          className="px-4 py-2 text-xs font-semibold rounded-xl btn-theme"
         >
           Browse Directory
         </button>
@@ -133,7 +133,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
       {/* Back button */}
       <button
         onClick={() => navigate('search')}
-        className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors"
+        className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-theme-main transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Directory</span>
@@ -190,7 +190,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                   onClick={() => setActiveImageIndex(i)}
                   className={`h-16 w-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
                     activeImageIndex === i
-                      ? 'border-blue-600 scale-95'
+                      ? 'border-theme-main scale-95'
                       : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
@@ -275,8 +275,8 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
             </div>
 
             {/* Privacy Protection Notice */}
-            <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-blue-800 dark:text-blue-300 flex items-start space-x-2">
-              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-blue-600" />
+            <div className="p-3 rounded-xl bg-theme-subtle border border-theme-subtle text-xs text-theme-main flex items-start space-x-2">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-theme-main" />
               <span>
                 Sensitive identifying details (serial numbers, hidden markings) are kept protected to ensure accurate ownership verification during claims.
               </span>
@@ -324,7 +324,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                 }}
                 className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm text-white shadow-lg transition-all flex items-center justify-center space-x-2 ${
                   item.type === 'found'
-                    ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                    ? 'btn-theme'
                     : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                 }`}
               >
@@ -342,7 +342,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
       {potentialMatches.length > 0 && (
         <section className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-white">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <Sparkles className="w-5 h-5 text-theme-main" />
             <h3 className="font-bold text-lg font-display">
               Possible Matching {item.type === 'lost' ? 'Found' : 'Lost'} Listings
             </h3>
@@ -356,11 +356,11 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
               <div
                 key={candidateItem.id}
                 onClick={() => navigate('item-detail', { id: candidateItem.id })}
-                className="cursor-pointer p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 shadow-sm hover:shadow transition-all flex flex-col justify-between"
+                className="cursor-pointer p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-theme-main shadow-sm hover:shadow transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-subtle text-theme-main">
                       Possible Match — {score}%
                     </span>
                     <span className="text-[11px] text-slate-400">{candidateItem.dateOfIncident}</span>
@@ -376,7 +376,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                   </p>
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-theme-main font-semibold">
                   <span>View Details</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </div>

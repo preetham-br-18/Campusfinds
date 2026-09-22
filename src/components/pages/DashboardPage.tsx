@@ -76,7 +76,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+          <span className="text-xs font-semibold uppercase tracking-wider text-theme-main">
             Student & Faculty Portal
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-display mt-0.5">
@@ -143,7 +143,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
             Pending Claims
           </span>
-          <span className="text-2xl sm:text-3xl font-extrabold text-blue-600 font-display mt-1 block">
+          <span className="text-2xl sm:text-3xl font-extrabold text-theme-main font-display mt-1 block">
             {pendingClaimsCount}
           </span>
           <button
@@ -168,9 +168,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
 
       {/* AI Possible Matches Section */}
       {possibleMatches.length > 0 && (
-        <section className="p-6 rounded-3xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 space-y-4">
-          <div className="flex items-center space-x-2 text-blue-900 dark:text-blue-300">
-            <Sparkles className="w-5 h-5 text-blue-600" />
+        <section className="p-6 rounded-3xl bg-theme-subtle/30 border border-theme-subtle space-y-4">
+          <div className="flex items-center space-x-2 text-theme-main">
+            <Sparkles className="w-5 h-5 text-theme-main" />
             <h3 className="font-bold text-base font-display">
               AI-Detected Matches for Your Inquiries
             </h3>
@@ -187,7 +187,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-theme-subtle text-theme-main">
                       Possible Match — {score}%
                     </span>
                     <span className="text-[11px] text-slate-400">{candidateItem.dateOfIncident}</span>
@@ -209,7 +209,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
                   </span>
                   <button
                     onClick={() => navigate('item-detail', { id: candidateItem.id })}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold"
+                    className="px-3 py-1 btn-theme rounded-lg text-xs font-semibold"
                   >
                     View Match
                   </button>
@@ -228,7 +228,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div
           onClick={() => navigate('my-items')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 shadow-sm cursor-pointer transition-all flex items-center justify-between"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-theme-main shadow-sm cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Manage My Listings</h4>
@@ -241,7 +241,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
 
         <div
           onClick={() => navigate('claims')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 shadow-sm cursor-pointer transition-all flex items-center justify-between"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-theme-main shadow-sm cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Review Ownership Claims</h4>
@@ -254,7 +254,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
 
         <div
           onClick={() => navigate('search')}
-          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 shadow-sm cursor-pointer transition-all flex items-center justify-between"
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-theme-main shadow-sm cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Browse Campus Directory</h4>

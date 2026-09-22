@@ -345,9 +345,9 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
                 type="button"
                 onClick={handleAIAssist}
                 disabled={aiAnalyzing}
-                className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold hover:bg-blue-100 flex items-center space-x-1.5 shadow-xs transition-all"
+                className="px-3 py-1.5 rounded-xl bg-theme-subtle border border-theme-subtle text-theme-main text-xs font-semibold hover:opacity-90 flex items-center space-x-1.5 shadow-xs transition-all"
               >
-                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <Sparkles className="w-3.5 h-3.5 text-theme-main" />
                 <span>{aiAnalyzing ? 'Analyzing photo...' : 'Auto-fill with AI'}</span>
               </button>
             )}
@@ -371,7 +371,7 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="h-28 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 flex flex-col items-center justify-center text-slate-400 hover:text-blue-600 transition-colors"
+                className="h-28 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-theme-main flex flex-col items-center justify-center text-slate-400 hover:text-theme-main transition-colors"
               >
                 <UploadCloud className="w-6 h-6 mb-1" />
                 <span className="text-[11px] font-semibold">Upload Photo</span>
@@ -612,7 +612,7 @@ export const ReportItemPage: React.FC<ReportItemPageProps> = ({
                 id="duplicate-continue-btn"
                 type="button"
                 onClick={() => performFinalPublish()}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                className="px-4 py-2 text-xs font-semibold rounded-xl btn-theme"
               >
                 Continue Anyway
               </button>

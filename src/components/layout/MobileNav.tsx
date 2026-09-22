@@ -28,7 +28,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           onClick={() => navigate('home')}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
             activeRoute === 'home'
-              ? 'text-blue-600 dark:text-blue-400 font-semibold'
+              ? 'text-theme-main font-semibold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
           }`}
         >
@@ -42,7 +42,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           onClick={() => navigate('search')}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
             activeRoute === 'search'
-              ? 'text-blue-600 dark:text-blue-400 font-semibold'
+              ? 'text-theme-main font-semibold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
           }`}
         >
@@ -55,7 +55,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           <button
             id="mobile-nav-report"
             onClick={openReportModal}
-            className="w-11 h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 transform -translate-y-2 active:scale-95 transition-all"
+            className="w-11 h-11 rounded-full gradient-theme-bg text-white flex items-center justify-center shadow-lg shadow-theme-glow transform -translate-y-2 active:scale-95 transition-all"
             title="Report Item"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -72,7 +72,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           }}
           className={`relative flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
             activeRoute === 'notifications'
-              ? 'text-blue-600 dark:text-blue-400 font-semibold'
+              ? 'text-theme-main font-semibold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
           }`}
         >
@@ -94,7 +94,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           }}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
             activeRoute === 'profile' || activeRoute === 'dashboard'
-              ? 'text-blue-600 dark:text-blue-400 font-semibold'
+              ? 'text-theme-main font-semibold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
           }`}
         >

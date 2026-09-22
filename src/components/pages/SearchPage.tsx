@@ -342,7 +342,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
                 {/* Info */}
                 <div className="p-4">
-                  <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-theme-main transition-colors">
                     {item.title}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">

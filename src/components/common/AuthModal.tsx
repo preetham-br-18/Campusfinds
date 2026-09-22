@@ -90,7 +90,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </button>
 
         <div className="mb-5 text-center">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+          <div className="w-12 h-12 bg-theme-subtle text-theme-main rounded-xl flex items-center justify-center mx-auto mb-3 shadow-inner">
             <GraduationCap className="w-6 h-6" />
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">
@@ -229,7 +229,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             id="auth-submit-btn"
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all mt-2"
+            className="w-full py-2.5 px-4 btn-theme disabled:opacity-50 font-semibold text-sm rounded-xl shadow-theme-glow transition-all mt-2"
           >
             {loading ? 'Authenticating...' : mode === 'login' ? 'Sign In to CampusFind' : 'Create Account'}
           </button>
@@ -280,7 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode(mode === 'login' ? 'register' : 'login');
               setError(null);
             }}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            className="text-xs text-theme-main hover:underline font-medium"
           >
             {mode === 'login'
               ? "Don't have an account? Sign up with campus details"

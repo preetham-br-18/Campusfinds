@@ -231,7 +231,7 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
               <div className="p-4 pt-0 border-t border-slate-100 dark:border-slate-800/80 mt-3 flex items-center justify-between gap-2">
                 <button
                   onClick={() => navigate('item-detail', { id: item.id })}
-                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+                  className="text-xs font-semibold text-theme-main hover:underline flex items-center space-x-1"
                 >
                   <span>View Details</span>
                   <ExternalLink className="w-3 h-3" />

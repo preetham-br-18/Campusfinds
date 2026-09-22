@@ -8,12 +8,18 @@ import {
   CheckCircle2,
   AlertCircle,
   Save,
-  Lock
+  Lock,
+  Sun,
+  Moon,
+  Palette as PaletteIcon,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../lib/authContext';
+import { useTheme } from '../../lib/themeContext';
 
 export const ProfilePage: React.FC = () => {
   const { currentUser, profile, updateUserProfile } = useAuth();
+  const { theme, setTheme, palette, setPalette, palettes } = useTheme();
   const [name, setName] = useState(profile?.name || currentUser?.displayName || '');
   const [department, setDepartment] = useState(profile?.department || '');
   const [year, setYear] = useState(profile?.year || '');
@@ -75,13 +81,13 @@ export const ProfilePage: React.FC = () => {
       <form onSubmit={handleSubmit} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
         {/* User Identity Header */}
         <div className="flex items-center space-x-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-300 font-bold text-xl flex items-center justify-center shadow-inner">
+          <div className="w-14 h-14 rounded-2xl bg-theme-subtle text-theme-main font-bold text-xl flex items-center justify-center shadow-inner">
             {(name || 'U').charAt(0).toUpperCase()}
           </div>
           <div>
             <h3 className="font-bold text-base text-slate-900 dark:text-white">{name || 'Campus Member'}</h3>
             <p className="text-xs text-slate-400">{currentUser?.email}</p>
-            <div className="mt-1 inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+            <div className="mt-1 inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-theme-subtle text-theme-main border border-theme-subtle">
               <Shield className="w-3 h-3 mr-0.5" />
               <span>Role: {profile?.role || 'student'}</span>
             </div>
@@ -99,7 +105,7 @@ export const ProfilePage: React.FC = () => {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-theme-main"
             />
           </div>
         </div>
@@ -181,9 +187,84 @@ export const ProfilePage: React.FC = () => {
             className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <span className="text-[11px] text-slate-400 mt-1 flex items-center space-x-1">
-            <Lock className="w-3 h-3 text-blue-500" />
+            <Lock className="w-3 h-3 text-theme-main" />
             <span>Kept strictly confidential. Never shown on public lost or found listings.</span>
           </span>
+        </div>
+
+        {/* Theme & Appearance Section */}
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+              <PaletteIcon className="w-4 h-4 text-theme-main" />
+              <span>Appearance & Campus Theme</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Customize your display mode and personal campus color accent.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              id="profile-theme-light-btn"
+              onClick={() => setTheme('light')}
+              className={`flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all ${
+                theme === 'light'
+                  ? 'border-slate-900 bg-white text-slate-900 shadow-sm ring-1 ring-slate-900'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Sun className="w-4 h-4 text-amber-500" />
+              <span>Light Mode</span>
+            </button>
+            <button
+              type="button"
+              id="profile-theme-dark-btn"
+              onClick={() => setTheme('dark')}
+              className={`flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all ${
+                theme === 'dark'
+                  ? 'border-white bg-slate-900 text-white shadow-sm ring-1 ring-white/20'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Moon className="w-4 h-4 text-blue-400" />
+              <span>Dark Mode</span>
+            </button>
+          </div>
+
+          {/* Palette Selection Grid */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              Accent Color Palette
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {palettes.map((p) => {
+                const isSelected = p.id === palette;
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    id={`profile-palette-${p.id}`}
+                    onClick={() => setPalette(p.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-slate-400 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/90 shadow-sm ring-1 ring-slate-400/50'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <div className="w-4 h-4 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: p.primaryColor }} />
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{p.name}</p>
+                      </div>
+                    </div>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-theme-main shrink-0 ml-1" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="pt-2 flex justify-end">
@@ -191,7 +272,7 @@ export const ProfilePage: React.FC = () => {
             id="save-profile-btn"
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center space-x-1.5 transition-all"
+            className="px-6 py-2.5 gradient-theme-bg hover:opacity-90 disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-theme-glow flex items-center space-x-1.5 transition-all"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Saving changes...' : 'Save Profile'}</span>

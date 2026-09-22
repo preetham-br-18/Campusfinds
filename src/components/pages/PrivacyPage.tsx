@@ -7,7 +7,7 @@ export const PrivacyPage: React.FC<{ navigate: (route: string) => void }> = ({ n
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
       <button
         onClick={() => navigate('home')}
-        className="inline-flex items-center space-x-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600"
+        className="inline-flex items-center space-x-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-theme-main"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Return Home</span>

@@ -95,7 +95,19 @@ function AppContent() {
   }, [currentUser, route]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-50/80 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors selection:bg-blue-600 selection:text-white relative">
+      {/* Ambient dynamic theme lighting */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div
+          className="absolute -top-36 left-1/2 -translate-x-1/2 w-[800px] h-[450px] rounded-full blur-3xl opacity-20 dark:opacity-25 transition-all duration-700"
+          style={{ background: 'var(--theme-primary)' }}
+        />
+        <div
+          className="absolute top-1/3 -right-40 w-[500px] h-[350px] rounded-full blur-3xl opacity-15 dark:opacity-15 transition-all duration-700"
+          style={{ background: 'var(--theme-accent)' }}
+        />
+      </div>
+
       {/* Top Navbar */}
       <Navbar
         activeRoute={route}

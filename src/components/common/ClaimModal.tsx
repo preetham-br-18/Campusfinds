@@ -162,7 +162,7 @@ export const ClaimModal: React.FC<ClaimModalProps> = ({
               id="submit-claim-request-btn"
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white shadow-md shadow-blue-500/20 flex items-center space-x-1.5"
+              className="px-5 py-2 text-xs font-semibold rounded-xl btn-theme disabled:opacity-50 text-white shadow-theme-glow flex items-center space-x-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{loading ? 'Submitting...' : 'Submit Claim for Review'}</span>

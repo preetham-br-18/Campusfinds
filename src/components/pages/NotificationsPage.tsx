@@ -69,7 +69,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ navigate }
   const getIcon = (type: string) => {
     switch (type) {
       case 'match_found':
-        return <Sparkles className="w-5 h-5 text-blue-500" />;
+        return <Sparkles className="w-5 h-5 text-theme-main" />;
       case 'claim_request':
         return <ShieldAlert className="w-5 h-5 text-amber-500" />;
       case 'claim_accepted':
@@ -79,7 +79,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ navigate }
       case 'new_message':
         return <MessageSquare className="w-5 h-5 text-indigo-500" />;
       default:
-        return <Volume2 className="w-5 h-5 text-blue-500" />;
+        return <Volume2 className="w-5 h-5 text-theme-main" />;
     }
   };
 
@@ -98,7 +98,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ navigate }
         {notifications.some(n => !n.isRead) && (
           <button
             onClick={handleMarkAllRead}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+            className="text-xs font-semibold text-theme-main hover:underline flex items-center space-x-1"
           >
             <CheckCheck className="w-4 h-4" />
             <span>Mark all read</span>
@@ -127,7 +127,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ navigate }
               className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start space-x-3.5 ${
                 notif.isRead
                   ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                  : 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60 shadow-xs'
+                  : 'bg-theme-subtle/50 border-theme-subtle shadow-xs'
               }`}
             >
               <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shrink-0">
@@ -137,7 +137,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ navigate }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className={`text-sm font-semibold truncate ${
-                    notif.isRead ? 'text-slate-900 dark:text-white' : 'text-blue-950 dark:text-blue-200 font-bold'
+                    notif.isRead ? 'text-slate-900 dark:text-white' : 'text-theme-main font-bold'
                   }`}>
                     {notif.title}
                   </h4>
@@ -151,7 +151,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ navigate }
               </div>
 
               {!notif.isRead && (
-                <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0 self-center" />
+                <div className="w-2 h-2 rounded-full bg-theme-main shrink-0 self-center" />
               )}
             </div>
           ))}

@@ -17,7 +17,7 @@ export const Footer: React.FC<FooterProps> = ({ navigate }) => {
               <span className="font-bold text-lg text-slate-900 dark:text-white font-display">
                 {APP_NAME}
               </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-theme-subtle text-theme-main font-medium">
                 Campus Portal
               </span>
             </div>
@@ -30,25 +30,25 @@ export const Footer: React.FC<FooterProps> = ({ navigate }) => {
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-600 dark:text-slate-400 font-medium">
             <button
               onClick={() => navigate('about')}
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="hover:text-theme-main transition-colors"
             >
               About
             </button>
             <button
               onClick={() => navigate('about')}
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="hover:text-theme-main transition-colors"
             >
               Safety Guidelines
             </button>
             <button
               onClick={() => navigate('privacy')}
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="hover:text-theme-main transition-colors"
             >
               Privacy Policy
             </button>
             <button
               onClick={() => navigate('terms')}
-              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="hover:text-theme-main transition-colors"
             >
               Terms of Use
             </button>

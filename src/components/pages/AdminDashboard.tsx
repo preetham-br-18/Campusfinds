@@ -105,7 +105,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
         </p>
         <button
           onClick={() => navigate('home')}
-          className="px-4 py-2 text-xs font-semibold rounded-xl bg-blue-600 text-white"
+          className="px-4 py-2 text-xs font-semibold rounded-xl btn-theme"
         >
           Return Home
         </button>
@@ -387,7 +387,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
                     <td className="py-3 px-2 text-right space-x-2">
                       <button
                         onClick={() => navigate('item-detail', { id: item.id })}
-                        className="text-blue-600 hover:underline"
+                        className="text-theme-main hover:underline font-medium"
                       >
                         View
                       </button>
@@ -438,7 +438,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
                     <td className="py-3 px-2 text-right">
                       <button
                         onClick={() => navigate('messages', { claimId: claim.id })}
-                        className="text-blue-600 hover:underline"
+                        className="text-theme-main hover:underline font-medium"
                       >
                         Inspect Chat
                       </button>
@@ -583,7 +583,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold"
+              className="px-4 py-2 btn-theme text-xs font-semibold rounded-xl"
             >
               Add Location
             </button>
@@ -595,7 +595,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
                 key={loc.id}
                 className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start space-x-2.5"
               >
-                <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-theme-main shrink-0 mt-0.5" />
                 <div>
                   <h5 className="font-bold text-xs text-slate-900 dark:text-white">{loc.name}</h5>
                   {loc.description && <p className="text-[11px] text-slate-400 mt-0.5">{loc.description}</p>}
@@ -648,7 +648,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
                 type="checkbox"
                 checked={settings.announcementActive}
                 onChange={(e) => setSettings({ ...settings, announcementActive: e.target.checked })}
-                className="rounded text-blue-600"
+                className="rounded accent-theme text-theme-main"
               />
               <span>Display announcement banner on homepage</span>
             </label>
@@ -657,7 +657,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
           <div className="pt-2 flex justify-end">
             <button
               type="submit"
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center space-x-1.5"
+              className="px-6 py-2.5 btn-theme rounded-xl font-semibold text-xs flex items-center space-x-1.5"
             >
               <Save className="w-4 h-4" />
               <span>Save System Settings</span>

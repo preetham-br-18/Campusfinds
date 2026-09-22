@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../lib/authContext';
 import { useTheme } from '../../lib/themeContext';
 import { APP_NAME, APP_TAGLINE } from '../../lib/constants';
+import { ThemeSelector } from './ThemeSelector';
 
 interface NavbarProps {
   activeRoute: string;
@@ -50,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNav('home')}>
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 font-bold text-lg">
+            <div className="w-10 h-10 rounded-xl gradient-theme-bg text-white flex items-center justify-center shadow-md font-bold text-lg tracking-wider">
               CF
             </div>
             <div>
@@ -70,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNav('home')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 activeRoute === 'home'
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
+                  ? 'text-theme-main bg-theme-subtle font-semibold shadow-xs'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
@@ -81,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNav('search')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center space-x-1.5 ${
                 activeRoute === 'search'
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
+                  ? 'text-theme-main bg-theme-subtle font-semibold shadow-xs'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
@@ -108,7 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => handleNav('dashboard')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activeRoute === 'dashboard'
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
+                    ? 'text-theme-main bg-theme-subtle font-semibold shadow-xs'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
@@ -132,16 +133,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right Action Icons */}
-          <div className="flex items-center space-x-2">
-            {/* Theme Toggle */}
-            <button
-              id="theme-toggle-btn"
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-            </button>
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
+            {/* Theme & Palette Selector */}
+            <ThemeSelector />
 
             {/* Notifications */}
             {currentUser && (
@@ -166,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center space-x-2 pl-2 pr-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all text-left"
                 >
-                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center font-semibold text-xs overflow-hidden">
+                  <div className="w-7 h-7 rounded-full bg-theme-subtle text-theme-main flex items-center justify-center font-semibold text-xs overflow-hidden">
                     {profile?.photoURL ? (
                       <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" />
                     ) : (
@@ -183,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                       <p className="font-semibold text-slate-900 dark:text-white truncate">{profile?.name}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{profile?.email}</p>
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 uppercase">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 bg-theme-subtle text-theme-main uppercase">
                         {profile?.role || 'student'}
                       </span>
                     </div>
@@ -245,7 +239,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="nav-signin-btn"
                 onClick={openAuthModal}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl gradient-theme-bg hover:opacity-90 text-white shadow-sm transition-all"
               >
                 Sign In
               </button>

@@ -104,7 +104,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
     <div className="space-y-12 pb-12">
       {/* Official Admin Announcement Banner if configured */}
       {settings?.announcementActive && settings.announcementText && (
-        <div className="bg-blue-600 text-white px-4 py-2.5 shadow-sm">
+        <div className="bg-theme-main text-white px-4 py-2.5 shadow-sm">
           <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2 text-xs md:text-sm font-medium">
             <Volume2 className="w-4 h-4 shrink-0" />
             <span>{settings.announcementText}</span>
@@ -114,13 +114,13 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
 
       {/* Hero Section */}
       <section className="relative px-4 sm:px-6 lg:px-8 pt-8 md:pt-14 text-center max-w-4xl mx-auto">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-6">
-          <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-          <span>AI-Assisted Lost & Found Network</span>
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-semibold mb-6 backdrop-blur-md">
+          <Sparkles className="w-3.5 h-3.5 text-theme-main animate-pulse" />
+          <span className="text-slate-700 dark:text-slate-200">AI-Assisted Lost & Found Network</span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display leading-[1.15]">
-          Lost it? <span className="text-blue-600 dark:text-blue-400">Find it.</span><br />
+          Lost it? <span className="text-theme-main">Find it.</span><br />
           Found it? <span className="text-emerald-600 dark:text-emerald-400">Return it.</span>
         </h1>
 
@@ -130,7 +130,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
 
         {/* Large Search Bar */}
         <form onSubmit={handleSearchSubmit} className="mt-8 max-w-2xl mx-auto">
-          <div className="relative flex items-center shadow-lg shadow-slate-200/50 dark:shadow-none rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 focus-within:ring-2 focus-within:ring-blue-500 transition-all">
+          <div className="relative flex items-center shadow-xl shadow-slate-300/30 dark:shadow-black/50 rounded-2xl bg-white/95 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 p-2 focus-within:ring-2 focus-within:ring-theme-main backdrop-blur-md transition-all">
             <Search className="w-5 h-5 text-slate-400 ml-3 shrink-0" />
             <input
               id="hero-search-input"
@@ -138,12 +138,12 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search for an item... (e.g. black wallet, AirPods, keys)"
-              className="w-full px-3 py-2.5 text-sm sm:text-base text-slate-900 dark:text-white bg-transparent focus:outline-none placeholder-slate-400"
+              className="w-full px-3 py-2.5 text-sm sm:text-base text-slate-900 dark:text-white bg-transparent focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
             />
             <button
               id="hero-search-submit-btn"
               type="submit"
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm shrink-0"
+              className="px-5 py-2.5 gradient-theme-bg hover:opacity-90 text-white text-sm font-semibold rounded-xl transition-all shadow-theme-glow shrink-0"
             >
               Search
             </button>
@@ -199,9 +199,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
 
           <button
             onClick={() => navigate('search', { type: 'lost' })}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-900/50 shadow-sm hover:shadow transition-all text-left group"
+            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-theme-main/50 shadow-sm hover:shadow transition-all text-left group"
           >
-            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-theme-subtle text-theme-main flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
               <Search className="w-5 h-5" />
             </div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Browse Lost</h4>
@@ -210,9 +210,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
 
           <button
             onClick={() => navigate('search', { type: 'found' })}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-900/50 shadow-sm hover:shadow transition-all text-left group"
+            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-theme-main/50 shadow-sm hover:shadow transition-all text-left group"
           >
-            <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
               <Compass className="w-5 h-5" />
             </div>
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Browse Found</h4>
@@ -224,9 +224,9 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
       {/* Possible Matches Banner (PRD Section 17 & 22-24) */}
       {currentUser && userPossibleMatches.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-900/60 shadow-sm">
-            <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300 mb-3">
-              <Sparkles className="w-5 h-5 text-blue-600" />
+          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-theme-subtle shadow-md">
+            <div className="flex items-center space-x-2 text-theme-main mb-3">
+              <Sparkles className="w-5 h-5" />
               <h3 className="font-bold text-base font-display">
                 Possible matches for your lost items
               </h3>
@@ -239,11 +239,11 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
               {userPossibleMatches.map(({ lostItem, match, score, reasons }) => (
                 <div
                   key={match.id}
-                  className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between"
+                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-sm flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-theme-subtle text-theme-main">
                         Possible Match — {score}%
                       </span>
                       <span className="text-[11px] text-slate-500">Found {match.dateOfIncident}</span>
@@ -257,11 +257,11 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <span className="text-[11px] text-slate-400">For: {lostItem.title}</span>
                     <button
                       onClick={() => navigate('item-detail', { id: match.id })}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold"
+                      className="px-3 py-1 btn-theme rounded-lg text-xs font-semibold"
                     >
                       View Match
                     </button>
@@ -278,10 +278,10 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
 
       {/* Real Campus Statistics (PRD Section 18) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden shadow-xl">
+        <div className="rounded-3xl bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden shadow-xl border border-slate-800">
           <div className="relative z-10">
             <div className="text-center sm:text-left mb-6">
-              <span className="text-xs font-semibold tracking-wider uppercase text-blue-400">
+              <span className="text-xs font-semibold tracking-wider uppercase text-theme-main">
                 Campus Impact
               </span>
               <h3 className="text-2xl font-bold font-display mt-1">Live Campus Statistics</h3>
@@ -310,7 +310,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
               </div>
 
               <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <span className="block text-3xl sm:text-4xl font-extrabold text-blue-400 font-display">
+                <span className="block text-3xl sm:text-4xl font-extrabold text-theme-main font-display">
                   {stats.activeListings.toLocaleString()}
                 </span>
                 <span className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1 block">
@@ -331,7 +331,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
           </div>
           <button
             onClick={() => navigate('search')}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+            className="text-xs font-semibold text-theme-main hover:underline flex items-center space-x-1"
           >
             <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -408,7 +408,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
                 {/* Content */}
                 <div className="p-4 flex-1 flex flex-col justify-between">
                   <div>
-                    <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-theme-main transition-colors">
                       {item.title}
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
@@ -437,7 +437,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, openAuthModal }) =
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-theme-subtle text-theme-main flex items-center justify-center">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>

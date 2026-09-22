@@ -185,7 +185,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ claimId, navigate })
                 <div
                   className={`max-w-sm sm:max-w-md px-3.5 py-2 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                     isMe
-                      ? 'bg-blue-600 text-white rounded-br-xs'
+                      ? 'bg-theme-main text-white rounded-br-xs'
                       : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-bl-xs'
                   }`}
                 >
@@ -209,13 +209,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ claimId, navigate })
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder={`Message ${otherPartyName} to coordinate handover...`}
-          className="flex-1 px-4 py-2.5 text-sm rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          className="flex-1 px-4 py-2.5 text-sm rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-theme-main shadow-sm"
         />
         <button
           id="send-message-btn"
           type="submit"
           disabled={sending || !inputText.trim()}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-semibold text-xs flex items-center space-x-1 shadow-sm transition-all"
+          className="px-5 py-2.5 btn-theme disabled:opacity-50 rounded-2xl font-semibold text-xs flex items-center space-x-1 transition-all"
         >
           <Send className="w-4 h-4" />
           <span className="hidden sm:inline">Send</span>

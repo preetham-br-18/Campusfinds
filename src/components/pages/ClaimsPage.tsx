@@ -241,7 +241,7 @@ export const ClaimsPage: React.FC<ClaimsPageProps> = ({ navigate }) => {
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <button
                   onClick={() => navigate('item-detail', { id: claim.itemId })}
-                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+                  className="text-xs font-semibold text-theme-main hover:underline flex items-center space-x-1"
                 >
                   <span>View Original Listing</span>
                   <ExternalLink className="w-3 h-3" />
@@ -253,7 +253,7 @@ export const ClaimsPage: React.FC<ClaimsPageProps> = ({ navigate }) => {
                     <button
                       id={`open-chat-${claim.id}`}
                       onClick={() => navigate('messages', { claimId: claim.id })}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm flex items-center space-x-1.5"
+                      className="px-4 py-2 rounded-xl btn-theme font-semibold text-xs flex items-center space-x-1.5"
                     >
                       <MessageSquare className="w-4 h-4" />
                       <span>Open Handover Chat</span>

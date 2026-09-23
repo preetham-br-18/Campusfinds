@@ -15,13 +15,17 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.admin == true;
     }
 
+    function isSaiVidyaUser() {
+      return isAuthenticated() && (isAdmin() || (request.auth.token.email != null && request.auth.token.email.matches('.*@saividya\\.ac\\.in$')));
+    }
+
     // Users Collection
     match /users/{userId} {
       // Users can read their own profile; Admins can read all users
       allow read: if isOwner(userId) || isAdmin();
 
-      // Normal registration: users can only create their own document and MUST have role == 'student'
-      allow create: if isOwner(userId) && request.resource.data.role == 'student';
+      // Normal registration: users can only create their own document, MUST have role == 'student', and must belong to @saividya.ac.in
+      allow create: if isOwner(userId) && request.resource.data.role == 'student' && isSaiVidyaUser();
 
       // Updates: user can update own profile fields (name, phone, department, year, photoURL)
       // but CANNOT change their own role or isActive status.
@@ -41,8 +45,8 @@ service cloud.firestore {
       // Anyone can read active/open items, but soft-deleted items only readable by owner or admin
       allow read: if resource.data.isDeleted != true || (isAuthenticated() && resource.data.reportedBy == request.auth.uid) || isAdmin();
 
-      // Authenticated users can create items; must set reportedBy to their own UID
-      allow create: if isAuthenticated() && request.resource.data.reportedBy == request.auth.uid;
+      // Authenticated users can create items; must set reportedBy to their own UID and have verified Sai Vidya domain
+      allow create: if isSaiVidyaUser() && request.resource.data.reportedBy == request.auth.uid;
 
       // Item reporter can edit their own item; Admins can moderate/edit/delete any item
       allow update: if (isAuthenticated() && resource.data.reportedBy == request.auth.uid) || isAdmin();
@@ -60,8 +64,8 @@ service cloud.firestore {
         isAdmin()
       );
 
-      // Authenticated user can submit a claim for an item; claimantId must match auth.uid
-      allow create: if isAuthenticated() && request.resource.data.claimantId == request.auth.uid;
+      // Authenticated user can submit a claim for an item; claimantId must match auth.uid and have verified Sai Vidya domain
+      allow create: if isSaiVidyaUser() && request.resource.data.claimantId == request.auth.uid;
 
       // Item owner (responder) or Admin can update claim status
       allow update: if isAuthenticated() && (

@@ -3,14 +3,28 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+const getEnv = (key: string, fallback: string): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
+      return (import.meta as any).env[key];
+    }
+  } catch {}
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key] as string;
+    }
+  } catch {}
+  return fallback;
+};
+
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyB7XhW7hOT5k8bBDdjof9H69D3Klbs6WB4",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "campusfind-215cb.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "campusfind-215cb",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "campusfind-215cb.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "378441300479",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:378441300479:web:6d01538da62ee73c100fca",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-B1P0VZ0GSH"
+  apiKey: getEnv("VITE_FIREBASE_API_KEY", "AIzaSyB7XhW7hOT5k8bBDdjof9H69D3Klbs6WB4"),
+  authDomain: getEnv("VITE_FIREBASE_AUTH_DOMAIN", "campusfind-215cb.firebaseapp.com"),
+  projectId: getEnv("VITE_FIREBASE_PROJECT_ID", "campusfind-215cb"),
+  storageBucket: getEnv("VITE_FIREBASE_STORAGE_BUCKET", "campusfind-215cb.firebasestorage.app"),
+  messagingSenderId: getEnv("VITE_FIREBASE_MESSAGING_SENDER_ID", "378441300479"),
+  appId: getEnv("VITE_FIREBASE_APP_ID", "1:378441300479:web:6d01538da62ee73c100fca"),
+  measurementId: getEnv("VITE_FIREBASE_MEASUREMENT_ID", "G-B1P0VZ0GSH")
 };
 
 // Initialize Firebase once
@@ -19,6 +33,10 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  hd: 'saividya.ac.in',
+  prompt: 'select_account'
+});
 
 export enum OperationType {
   CREATE = 'create',

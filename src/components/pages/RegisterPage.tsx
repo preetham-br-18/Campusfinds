@@ -62,8 +62,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ navigate }) => {
       setError('Please enter your full name.');
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid college email address.');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.endsWith('@saividya.ac.in')) {
+      setError('CampusFind is restricted to verified Sai Vidya Institute of Technology students and staff with a @saividya.ac.in account.');
       return;
     }
     if (password.length < 6) {
@@ -168,10 +169,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ navigate }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ananya.s@campus.edu"
+                placeholder="preethambr.24aiml@saividya.ac.in"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors text-slate-900 dark:text-white"
               />
             </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Must be your official <span className="font-semibold text-indigo-600 dark:text-indigo-400">@saividya.ac.in</span> address.
+            </p>
           </div>
 
           {/* Department & Academic Year */}

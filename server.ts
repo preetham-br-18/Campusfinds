@@ -100,7 +100,12 @@ function calculateJaccardSimilarity(tokens1: string[], tokens2: string[]): numbe
 /**
  * Extracts and verifies Firebase Auth ID token from Bearer header
  */
-async function authenticateRequest(req: express.Request): Promise<{ uid: string; email?: string; name?: string; admin: boolean } | null> {
+function isSaiVidyaDomain(email?: string | null): boolean {
+  if (!email || typeof email !== "string") return false;
+  return email.trim().toLowerCase().endsWith("@saividya.ac.in");
+}
+
+async function authenticateRequest(req: express.Request): Promise<{ uid: string; email?: string; emailVerified: boolean; name?: string; admin: boolean } | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -112,6 +117,7 @@ async function authenticateRequest(req: express.Request): Promise<{ uid: string;
     return {
       uid: decoded.uid,
       email: decoded.email,
+      emailVerified: decoded.email_verified === true,
       name: (decoded as any).name || (decoded as any).display_name,
       admin: decoded.admin === true
     };
@@ -129,6 +135,19 @@ app.post("/api/reports/submit", async (req, res) => {
   if (!user) {
     return res.status(401).json({
       error: "Please sign in to submit a report."
+    });
+  }
+
+  // Enforce Sai Vidya domain & email verification for non-admin accounts
+  if (!user.admin && !isSaiVidyaDomain(user.email)) {
+    return res.status(403).json({
+      error: "CampusFind is restricted to verified Sai Vidya Institute of Technology students and staff with a @saividya.ac.in account."
+    });
+  }
+
+  if (!user.admin && !user.emailVerified) {
+    return res.status(403).json({
+      error: "Email verification required. Please verify your @saividya.ac.in email address before submitting reports."
     });
   }
 
@@ -557,6 +576,18 @@ app.post("/api/listings/report", async (req, res) => {
   const user = await authenticateRequest(req);
   if (!user) {
     return res.status(401).json({ error: "Please sign in to report a listing." });
+  }
+
+  if (!user.admin && !isSaiVidyaDomain(user.email)) {
+    return res.status(403).json({
+      error: "CampusFind is restricted to verified Sai Vidya Institute of Technology students and staff with a @saividya.ac.in account."
+    });
+  }
+
+  if (!user.admin && !user.emailVerified) {
+    return res.status(403).json({
+      error: "Email verification required. Please verify your @saividya.ac.in email address."
+    });
   }
 
   const { listingId, reason, description } = req.body || {};

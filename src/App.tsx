@@ -101,7 +101,7 @@ function AppContent() {
       if (isAdmin && (route === 'login' || route === 'register' || route === 'dashboard' || route === 'student')) {
         navigate('admin');
       } else if (!isAdmin && (route === 'login' || route === 'register')) {
-        navigate('student');
+        navigate('dashboard');
       }
     }
   }, [currentUser, isAdmin, route, loading]);
@@ -218,6 +218,16 @@ function AppContent() {
         initialMode={route === 'register' ? 'register' : 'login'}
         intendedRoute={route !== 'login' && route !== 'register' && route !== 'home' ? route : undefined}
       />
+    );
+  }
+
+  // 3. Email Verification Gate:
+  // Require the Firebase email to be verified before granting normal CampusFind access
+  if (currentUser && !isAdmin && !currentUser.emailVerified) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+        <VerifyEmailPage navigate={navigate} />
+      </div>
     );
   }
 

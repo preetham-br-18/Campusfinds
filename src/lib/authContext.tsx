@@ -60,6 +60,13 @@ export function formatAuthError(error: any): string {
   const code = error.code || '';
   const message = error.message || '';
 
+  if (code === 'auth/domain-restricted' || message.includes('restricted to verified Sai Vidya')) {
+    return RESTRICTION_ERROR_MESSAGE;
+  }
+  if (code === 'auth/unauthorized-domain') {
+    const currentDomain = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'current domain';
+    return `Firebase Authentication is restricted on this domain (${currentDomain}). Please ensure "${currentDomain}" is added to Authorized Domains in Firebase Console (Authentication > Settings > Authorized domains).`;
+  }
   if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
     return 'Invalid email or password. Please check your credentials.';
   }
@@ -70,7 +77,7 @@ export function formatAuthError(error: any): string {
     return 'Password should be at least 6 characters long.';
   }
   if (code === 'auth/invalid-email') {
-    return 'Please provide a valid campus email address format.';
+    return 'Please provide a valid @saividya.ac.in email address.';
   }
   if (code === 'auth/too-many-requests') {
     return 'Too many failed sign-in attempts. Please wait a few moments and try again.';
@@ -78,13 +85,25 @@ export function formatAuthError(error: any): string {
   if (code === 'auth/user-disabled') {
     return 'This user account has been suspended by campus administration.';
   }
-  if (code === 'auth/unauthorized-domain') {
-    return 'Firebase Authentication is restricted on this domain. Please ensure this origin is added to Firebase Authorized Domains.';
-  }
   if (code === 'auth/popup-closed-by-user') {
     return 'The sign-in popup was closed before completion.';
   }
+  if (code === 'auth/popup-blocked') {
+    return 'The sign-in popup was blocked by your browser. Please allow popups for this site.';
+  }
   return message || 'Authentication failed. Please check your network and try again.';
+}
+
+export const ALLOWED_CAMPUS_DOMAIN = 'saividya.ac.in';
+export const RESTRICTION_ERROR_MESSAGE =
+  'CampusFind is restricted to verified Sai Vidya Institute of Technology students and staff with a @saividya.ac.in account.';
+
+/**
+ * Case-insensitive domain verification for Sai Vidya institutional emails.
+ */
+export function isValidSaiVidyaEmail(email?: string | null): boolean {
+  if (!email || typeof email !== 'string') return false;
+  return email.trim().toLowerCase().endsWith('@saividya.ac.in');
 }
 
 const CACHED_PROFILE_KEY = 'campusfind_current_profile';
@@ -176,6 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           uid: user.uid,
           name: user.displayName || user.email?.split('@')[0] || 'Campus User',
           email: user.email || '',
+          college: 'Sai Vidya Institute of Technology',
           role: isAdminUser ? 'admin' : 'student',
           isActive: true,
           photoURL: user.photoURL || '',
@@ -210,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       uid: user.uid,
       name: user.displayName || user.email?.split('@')[0] || 'Campus User',
       email: user.email || '',
+      college: 'Sai Vidya Institute of Technology',
       role: isAdminUser ? 'admin' : 'student',
       isActive: true,
       photoURL: user.photoURL || '',
@@ -228,23 +249,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       clearTimeout(safetyTimer);
       if (user) {
-        setCurrentUser(user);
-
         // 1. Instant local token inspect (cached, in-memory, 0ms)
         let isAdminByClaim = false;
         try {
           const cachedTokenResult = await user.getIdTokenResult(false);
           isAdminByClaim = cachedTokenResult.claims.admin === true;
-          setHasAdminClaim(isAdminByClaim);
-
-          // If we have cached profile matching this user, unblock loading immediately!
-          const currentCached = getCachedProfile();
-          if (currentCached && currentCached.uid === user.uid) {
-            setProfile(currentCached);
-            setLoading(false);
-          }
         } catch {
           // quiet fallback
+        }
+
+        // Domain restriction enforcement: Non-admins MUST have a verified @saividya.ac.in email
+        const isAuthorizedEmail = isValidSaiVidyaEmail(user.email);
+
+        if (!isAdminByClaim && !isAuthorizedEmail) {
+          console.warn('Unauthorized domain detected in session. Signing out:', user.email);
+          await fbSignOut(auth);
+          setCurrentUser(null);
+          setProfile(null);
+          setHasAdminClaim(false);
+          setCachedProfile(null, false);
+          setLoading(false);
+          return;
+        }
+
+        setCurrentUser(user);
+        setHasAdminClaim(isAdminByClaim);
+
+        // If we have cached profile matching this user, unblock loading immediately!
+        const currentCached = getCachedProfile();
+        if (currentCached && currentCached.uid === user.uid) {
+          setProfile(currentCached);
+          setLoading(false);
         }
 
         // 2. Fetch fresh profile and verify claims with a fast 1500ms timeout
@@ -275,8 +310,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginWithEmail = async (email: string, pass: string): Promise<AuthSuccessResult> => {
+    const cleanEmail = email.trim().toLowerCase();
+
     // 1. Firebase Authentication verifies the user normally
-    const userCredential = await signInWithEmailAndPassword(auth, email.trim(), pass);
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
     const user = userCredential.user;
 
     // 2. Requirement 4 & 11: Force refresh the Firebase ID token using: await user.getIdToken(true)
@@ -287,6 +324,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 4. Check admin custom claim strictly: if claims.admin === true
     const isAdminByClaim = idTokenResult.claims.admin === true;
+
+    // 5. Strict Sai Vidya domain restriction for non-admins
+    if (!isAdminByClaim && !isValidSaiVidyaEmail(user.email)) {
+      await fbSignOut(auth);
+      setCurrentUser(null);
+      setProfile(null);
+      setHasAdminClaim(false);
+      setCachedProfile(null, false);
+      const err: any = new Error(RESTRICTION_ERROR_MESSAGE);
+      err.code = 'auth/domain-restricted';
+      throw err;
+    }
+
     setHasAdminClaim(isAdminByClaim);
     setCurrentUser(user);
 
@@ -303,14 +353,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Registers a new student account:
+   * - Enforces @saividya.ac.in domain restriction strictly
    * - Sets displayName
    * - Enforces role: "student" strictly (user cannot choose role)
    * - Creates Firestore document users/{uid}
    * - Sends email verification
    */
   const registerWithEmail = async (data: RegistrationInput): Promise<AuthSuccessResult> => {
+    const cleanEmail = data.email.trim().toLowerCase();
+
+    // Domain Restriction: Only @saividya.ac.in emails allowed
+    if (!isValidSaiVidyaEmail(cleanEmail)) {
+      const err: any = new Error(RESTRICTION_ERROR_MESSAGE);
+      err.code = 'auth/domain-restricted';
+      throw err;
+    }
+
     // 1. Create Firebase Auth account
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.pass);
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, data.pass);
     const user = userCredential.user;
 
     // 2. Set Firebase Auth display name
@@ -328,11 +388,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newProfile: UserProfile = {
       uid: user.uid,
       name: data.name.trim(),
-      email: data.email.trim().toLowerCase(),
+      email: cleanEmail,
       department: data.department.trim(),
       year: data.year.trim(),
       studentId: data.studentId.trim(),
-      college: data.college?.trim() || 'Campus University',
+      college: 'Sai Vidya Institute of Technology',
       role: 'student', // Strict enforcement: normal registrations are always student
       isActive: true,
       photoURL: user.photoURL || '',
@@ -356,17 +416,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async (): Promise<AuthSuccessResult> => {
+    // 1. Perform Google sign-in using modular Firebase Web SDK
     const res = await signInWithPopup(auth, googleProvider);
     const user = res.user;
 
-    // Force refresh the Firebase ID token using: await user.getIdToken(true)
+    // 2. Force refresh Firebase ID token to inspect custom claims
     await user.getIdToken(true);
     const idTokenResult = await user.getIdTokenResult(true);
 
     const isAdminByClaim = idTokenResult.claims.admin === true;
+    const isAllowedDomain = isValidSaiVidyaEmail(user.email);
+
+    // 3. Sai Vidya Domain Restriction:
+    // If a Google account has an email outside @saividya.ac.in:
+    // - Do not allow access to the application.
+    // - Show a clear message: "CampusFind is restricted to verified Sai Vidya Institute of Technology students and staff with a @saividya.ac.in account."
+    // - Sign the unauthorized Firebase user out.
+    // - Do not create a student profile for the unauthorized account.
+    if (!isAdminByClaim && !isAllowedDomain) {
+      console.warn('Google account rejected due to domain restriction:', user.email);
+      await fbSignOut(auth);
+      setCurrentUser(null);
+      setProfile(null);
+      setHasAdminClaim(false);
+      setCachedProfile(null, false);
+
+      const err: any = new Error(RESTRICTION_ERROR_MESSAGE);
+      err.code = 'auth/domain-restricted';
+      throw err;
+    }
+
     setHasAdminClaim(isAdminByClaim);
     setCurrentUser(user);
 
+    // 4. Only create/fetch student profile for the authorized account
     const p = await fetchProfile(user, isAdminByClaim);
     setProfile(p);
     setCachedProfile(p, isAdminByClaim);

@@ -118,7 +118,7 @@ export const AuthGatePage: React.FC<AuthGatePageProps> = ({
       } else if (intendedRoute && intendedRoute !== 'login' && intendedRoute !== 'register') {
         navigate(intendedRoute);
       } else {
-        navigate('student');
+        navigate('dashboard');
       }
     } catch (err: any) {
       console.warn('Login error:', err);
@@ -136,8 +136,9 @@ export const AuthGatePage: React.FC<AuthGatePageProps> = ({
       setError('Please enter your full name.');
       return;
     }
-    if (!registerEmail.trim() || !registerEmail.includes('@')) {
-      setError('Please enter a valid college email address.');
+    const cleanEmail = registerEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.endsWith('@saividya.ac.in')) {
+      setError('CampusFind is restricted to verified Sai Vidya Institute of Technology students and staff with a @saividya.ac.in account.');
       return;
     }
     if (registerPassword.length < 6) {
@@ -158,7 +159,7 @@ export const AuthGatePage: React.FC<AuthGatePageProps> = ({
     try {
       await registerWithEmail({
         name: name.trim(),
-        email: registerEmail.trim(),
+        email: cleanEmail,
         pass: registerPassword,
         department,
         year,
@@ -185,7 +186,7 @@ export const AuthGatePage: React.FC<AuthGatePageProps> = ({
       } else if (intendedRoute && intendedRoute !== 'login' && intendedRoute !== 'register') {
         navigate(intendedRoute);
       } else {
-        navigate('student');
+        navigate('dashboard');
       }
     } catch (err: any) {
       console.warn('Google sign-in error:', err);
@@ -361,7 +362,7 @@ export const AuthGatePage: React.FC<AuthGatePageProps> = ({
                             required
                             value={loginEmail}
                             onChange={(e) => setLoginEmail(e.target.value)}
-                            placeholder="student@campus.edu"
+                            placeholder="student@saividya.ac.in"
                             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors text-slate-900 dark:text-white"
                           />
                         </div>
@@ -525,10 +526,13 @@ export const AuthGatePage: React.FC<AuthGatePageProps> = ({
                             required
                             value={registerEmail}
                             onChange={(e) => setRegisterEmail(e.target.value)}
-                            placeholder="student@campus.edu"
+                            placeholder="preethambr.24aiml@saividya.ac.in"
                             className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors text-slate-900 dark:text-white"
                           />
                         </div>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Must be your official <span className="font-semibold text-indigo-600 dark:text-indigo-400">@saividya.ac.in</span> institutional email.
+                        </p>
                       </div>
 
                       {/* Department & Year (Grid) */}

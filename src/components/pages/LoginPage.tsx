@@ -41,7 +41,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ navigate }) => {
       if (result.isAdmin) {
         navigate('admin');
       } else {
-        navigate('student');
+        navigate('dashboard');
       }
     } catch (err: any) {
       console.warn('Login error:', err);
@@ -59,7 +59,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ navigate }) => {
       if (result.isAdmin) {
         navigate('admin');
       } else {
-        navigate('student');
+        navigate('dashboard');
       }
     } catch (err: any) {
       console.warn('Google sign-in error:', err);
@@ -110,7 +110,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ navigate }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@campus.edu"
+                placeholder="student@saividya.ac.in"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-theme-main/20 focus:border-theme-main transition-colors text-slate-900 dark:text-white"
               />
             </div>

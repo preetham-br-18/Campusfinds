@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Flag, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { AbuseReason } from '../../types';
 import { ABUSE_REASONS } from '../../lib/constants';
-import { submitAbuseReportInFirestore } from '../../lib/firestoreService';
+import { submitAbuseReportInFirestore, reportListingInFirestore } from '../../lib/firestoreService';
 import { useAuth } from '../../lib/authContext';
 
 interface ReportAbuseModalProps {
@@ -49,6 +49,15 @@ export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({
         reason,
         description: description.trim()
       });
+
+      if (targetType === 'item') {
+        try {
+          await reportListingInFirestore(targetId, targetTitle || 'Item Listing', reason, description.trim());
+        } catch (listingErr) {
+          console.warn('Listing report endpoint warning:', listingErr);
+        }
+      }
+
       setSubmitted(true);
       setTimeout(() => {
         setSubmitted(false);

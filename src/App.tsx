@@ -37,6 +37,15 @@ function AppContent() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [reportPickerOpen, setReportPickerOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Fast loading safety: Ensure the interface unblocks immediately (within max 350ms)
+  const [fastSessionReady, setFastSessionReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFastSessionReady(true);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Sync with hash
   useEffect(() => {
@@ -120,8 +129,8 @@ function AppContent() {
     return () => clearInterval(interval);
   }, [currentUser, route]);
 
-  // 1. Initial auth state loading screen
-  if (loading) {
+  // 1. Initial auth state loading screen - only shown during the brief initial moment (<350ms)
+  if (loading && !fastSessionReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-white">
         <div className="flex flex-col items-center space-y-4">

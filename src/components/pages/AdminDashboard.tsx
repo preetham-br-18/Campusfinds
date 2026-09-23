@@ -15,7 +15,11 @@ import {
   Lock,
   UserCheck,
   UserX,
-  ExternalLink
+  ExternalLink,
+  Check,
+  X,
+  History,
+  AlertOctagon
 } from 'lucide-react';
 import {
   Item,
@@ -24,7 +28,9 @@ import {
   UserProfile,
   CampusLocation,
   SystemSettings,
-  UserRole
+  UserRole,
+  AdminAuditLog,
+  ListingReport
 } from '../../types';
 import { useAuth } from '../../lib/authContext';
 import { UnauthorizedPage } from './UnauthorizedPage';
@@ -41,7 +47,12 @@ import {
   saveCampusLocationInFirestore,
   getSystemSettingsFromFirestore,
   updateSystemSettingsInFirestore,
-  markItemReturnedInFirestore
+  markItemReturnedInFirestore,
+  moderateReportInFirestore,
+  restrictUserInFirestore,
+  getAdminAuditLogsFromFirestore,
+  getListingReportsFromFirestore,
+  resolveListingReportInFirestore
 } from '../../lib/firestoreService';
 
 interface AdminDashboardProps {
@@ -50,7 +61,9 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
   const { currentUser, isAdmin, getIdToken } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'claims' | 'reports' | 'users' | 'locations' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'items' | 'claims' | 'reports' | 'flagged' | 'users' | 'audit' | 'locations' | 'settings'
+  >('overview');
 
   const [items, setItems] = useState<Item[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -58,10 +71,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [locations, setLocations] = useState<CampusLocation[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [listingReports, setListingReports] = useState<ListingReport[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [itemStatusFilter, setItemStatusFilter] = useState<'all' | 'pending' | 'approved' | 'suspicious' | 'rejected' | 'flagged'>('all');
+  const [modActionLoading, setModActionLoading] = useState<string | null>(null);
 
   // New location state
   const [newLocName, setNewLocName] = useState('');
@@ -71,14 +88,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
     async function loadAdminData() {
       setLoading(true);
       try {
-        const [itemsList, claimsList, reportsList, usersList, locsList, sysSettings] =
+        const [itemsList, claimsList, reportsList, usersList, locsList, sysSettings, logsList, flagsList] =
           await Promise.all([
-            getAllItemsFromFirestore(true),
+            getAllItemsFromFirestore(true, false),
             getAllClaimsFromFirestore(),
             getAllAbuseReportsFromFirestore(),
             getAllUsersFromFirestore(),
             getCampusLocationsFromFirestore(),
-            getSystemSettingsFromFirestore()
+            getSystemSettingsFromFirestore(),
+            getAdminAuditLogsFromFirestore(),
+            getListingReportsFromFirestore()
           ]);
 
         setItems(itemsList);
@@ -87,6 +106,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
         setUsers(usersList);
         setLocations(locsList);
         setSettings(sysSettings);
+        setAuditLogs(logsList);
+        setListingReports(flagsList);
       } catch (err) {
         console.error('Failed to load admin data:', err);
       } finally {
@@ -154,6 +175,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
       setReports(reports.map(r => (r.id === reportId ? { ...r, status } : r)));
     } catch (err) {
       console.error('Error resolving report:', err);
+    }
+  };
+
+  const handleModerateItem = async (
+    itemId: string,
+    action: 'approve' | 'reject' | 'mark_suspicious' | 'resolve'
+  ) => {
+    let rejectionReason: string | undefined = undefined;
+    let suspiciousReason: string | undefined = undefined;
+
+    if (action === 'reject') {
+      const reason = window.prompt('Enter reason for rejecting this report (will be visible to reporter):', 'Incomplete details or invalid listing');
+      if (reason === null) return;
+      rejectionReason = reason.trim() || 'Incomplete details';
+    } else if (action === 'mark_suspicious') {
+      const reason = window.prompt('Reason for flagging as suspicious (internal note):', 'Suspicious activity or unverified claim');
+      if (reason === null) return;
+      suspiciousReason = reason.trim() || 'Potential spam/unverified';
+    }
+
+    setModActionLoading(itemId);
+    try {
+      await moderateReportInFirestore(itemId, action, { rejectionReason, suspiciousReason });
+      
+      const newStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : action === 'mark_suspicious' ? 'suspicious' : 'resolved';
+      setItems(items.map(i => (i.id === itemId ? {
+        ...i,
+        status: newStatus,
+        moderatedBy: currentUser?.uid,
+        rejectionReason: rejectionReason || i.rejectionReason,
+        suspiciousReason: suspiciousReason || i.suspiciousReason
+      } : i)));
+
+      // Refresh audit logs
+      const updatedLogs = await getAdminAuditLogsFromFirestore();
+      setAuditLogs(updatedLogs);
+    } catch (err: any) {
+      console.error('Error moderating item:', err);
+      alert(err.message || 'Failed to update item moderation status.');
+    } finally {
+      setModActionLoading(null);
+    }
+  };
+
+  const handleToggleUserRestriction = async (userId: string, currentlyRestricted: boolean) => {
+    const actionText = currentlyRestricted ? 'lift reporting restriction for' : 'restrict report submissions (24h) for';
+    if (!window.confirm(`Are you sure you want to ${actionText} this user?`)) return;
+
+    try {
+      await restrictUserInFirestore(userId, !currentlyRestricted, 24, 'Administrative moderation action');
+      setUsers(users.map(u => (u.uid === userId ? {
+        ...u,
+        reportingRestricted: !currentlyRestricted,
+        restrictedUntil: !currentlyRestricted ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : undefined
+      } : u)));
+
+      const updatedLogs = await getAdminAuditLogsFromFirestore();
+      setAuditLogs(updatedLogs);
+    } catch (err: any) {
+      console.error('Error restricting user:', err);
+      alert(err.message || 'Failed to update user restriction.');
+    }
+  };
+
+  const handleResolveListingReport = async (reportId: string, status: 'reviewed' | 'dismissed') => {
+    try {
+      await resolveListingReportInFirestore(reportId, status);
+      setListingReports(listingReports.map(lr => (lr.id === reportId ? { ...lr, status } : lr)));
+    } catch (err: any) {
+      console.error('Error resolving listing report:', err);
     }
   };
 
@@ -227,13 +318,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
         </button>
         <button
           onClick={() => setActiveTab('items')}
-          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
+          className={`relative px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'items'
               ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Items ({items.length})
+          {items.filter(i => i.status === 'pending').length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[10px] font-mono">
+              {items.filter(i => i.status === 'pending').length} pending
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('claims')}
@@ -261,6 +357,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
           )}
         </button>
         <button
+          onClick={() => setActiveTab('flagged')}
+          className={`relative px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
+            activeTab === 'flagged'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          Flagged Listings ({listingReports.length})
+          {listingReports.filter(l => l.status === 'pending').length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-mono">
+              {listingReports.filter(l => l.status === 'pending').length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('users')}
           className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'users'
@@ -269,6 +380,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
           }`}
         >
           Users ({users.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('audit')}
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
+            activeTab === 'audit'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          Audit Logs ({auditLogs.length})
         </button>
         <button
           onClick={() => setActiveTab('locations')}
@@ -362,58 +483,201 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
       {/* Tab 2: ITEMS MODERATION */}
       {activeTab === 'items' && (
         <div className="space-y-4">
+          {/* Sub-filters for items moderation */}
+          <div className="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-xs">
+            <span className="text-slate-400 font-medium px-2">Filter:</span>
+            <button
+              onClick={() => setItemStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                itemStatusFilter === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              All Items ({items.length})
+            </button>
+            <button
+              onClick={() => setItemStatusFilter('pending')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                itemStatusFilter === 'pending'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Pending Verification ({items.filter(i => i.status === 'pending').length})
+            </button>
+            <button
+              onClick={() => setItemStatusFilter('approved')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                itemStatusFilter === 'approved'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Live & Approved ({items.filter(i => i.status === 'approved' || i.status === 'open').length})
+            </button>
+            <button
+              onClick={() => setItemStatusFilter('suspicious')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                itemStatusFilter === 'suspicious'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Flagged Suspicious ({items.filter(i => i.status === 'suspicious').length})
+            </button>
+            <button
+              onClick={() => setItemStatusFilter('rejected')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                itemStatusFilter === 'rejected'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Rejected ({items.filter(i => i.status === 'rejected').length})
+            </button>
+            <button
+              onClick={() => setItemStatusFilter('flagged')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                itemStatusFilter === 'flagged'
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Duplicates / Flagged ({items.filter(i => i.isDuplicate || i.duplicateWarning || i.flaggedForReview).length})
+            </button>
+          </div>
+
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase font-semibold">
                   <th className="pb-3 px-2">Type</th>
-                  <th className="pb-3 px-2">Title</th>
+                  <th className="pb-3 px-2">Title & Alerts</th>
                   <th className="pb-3 px-2">Category</th>
                   <th className="pb-3 px-2">Location</th>
                   <th className="pb-3 px-2">Reporter</th>
                   <th className="pb-3 px-2">Status</th>
-                  <th className="pb-3 px-2 text-right">Actions</th>
+                  <th className="pb-3 px-2 text-right">Moderation Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {items.map(item => (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="py-3 px-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white ${
-                        item.type === 'lost' ? 'bg-rose-600' : 'bg-emerald-600'
-                      }`}>
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 font-semibold text-slate-900 dark:text-white">
-                      {item.title}
-                    </td>
-                    <td className="py-3 px-2 text-slate-600 dark:text-slate-400">{item.category}</td>
-                    <td className="py-3 px-2 text-slate-600 dark:text-slate-400">{item.locationName}</td>
-                    <td className="py-3 px-2 text-slate-600 dark:text-slate-400">{item.reporterName}</td>
-                    <td className="py-3 px-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        {item.isDeleted ? 'Deleted' : item.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 text-right space-x-2">
-                      <button
-                        onClick={() => navigate('item-detail', { id: item.id })}
-                        className="text-theme-main hover:underline font-medium"
-                      >
-                        View
-                      </button>
-                      {!item.isDeleted && (
+                {items
+                  .filter(item => {
+                    if (itemStatusFilter === 'all') return true;
+                    if (itemStatusFilter === 'pending') return item.status === 'pending';
+                    if (itemStatusFilter === 'approved') return item.status === 'approved' || item.status === 'open';
+                    if (itemStatusFilter === 'suspicious') return item.status === 'suspicious';
+                    if (itemStatusFilter === 'rejected') return item.status === 'rejected';
+                    if (itemStatusFilter === 'flagged') return item.isDuplicate || item.duplicateWarning || item.flaggedForReview;
+                    return true;
+                  })
+                  .map(item => (
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="py-3 px-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white ${
+                          item.type === 'lost' ? 'bg-rose-600' : 'bg-emerald-600'
+                        }`}>
+                          {item.type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 max-w-xs">
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          {item.title}
+                        </div>
+                        {item.duplicateWarning && (
+                          <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-[10px] font-medium">
+                            <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span className="truncate max-w-[200px]">{item.duplicateWarning}</span>
+                          </div>
+                        )}
+                        {item.flaggedForReview && (
+                          <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 text-[10px] font-medium ml-1">
+                            <Flag className="w-3 h-3 text-rose-600 shrink-0" />
+                            <span>Reported by community ({item.reportCount || 1})</span>
+                          </div>
+                        )}
+                        {item.rejectionReason && (
+                          <div className="mt-1 text-[10px] text-rose-500 italic">
+                            Reason: {item.rejectionReason}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-slate-600 dark:text-slate-400">{item.category}</td>
+                      <td className="py-3 px-2 text-slate-600 dark:text-slate-400">{item.locationName}</td>
+                      <td className="py-3 px-2 text-slate-600 dark:text-slate-400">
+                        <div>{item.reporterName}</div>
+                        <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{item.reporterEmail}</div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          item.isDeleted
+                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                            : item.status === 'pending'
+                            ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300'
+                            : item.status === 'approved' || item.status === 'open'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
+                            : item.status === 'suspicious'
+                            ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300'
+                            : item.status === 'rejected'
+                            ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}>
+                          {item.isDeleted ? 'Deleted' : item.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right space-x-1.5 whitespace-nowrap">
+                        {/* Quick Moderation Action buttons */}
+                        {item.status !== 'approved' && item.status !== 'open' && !item.isDeleted && (
+                          <button
+                            disabled={modActionLoading === item.id}
+                            onClick={() => handleModerateItem(item.id, 'approve')}
+                            className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold shadow-xs disabled:opacity-50 inline-flex items-center gap-1"
+                            title="Approve report and publish to campus directory"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Approve</span>
+                          </button>
+                        )}
+                        {item.status !== 'rejected' && !item.isDeleted && (
+                          <button
+                            disabled={modActionLoading === item.id}
+                            onClick={() => handleModerateItem(item.id, 'reject')}
+                            className="px-2 py-1 rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 text-[11px] font-semibold border border-rose-200 dark:border-rose-800 disabled:opacity-50 inline-flex items-center gap-1"
+                            title="Reject report"
+                          >
+                            <X className="w-3 h-3" />
+                            <span>Reject</span>
+                          </button>
+                        )}
+                        {item.status !== 'suspicious' && !item.isDeleted && (
+                          <button
+                            disabled={modActionLoading === item.id}
+                            onClick={() => handleModerateItem(item.id, 'mark_suspicious')}
+                            className="px-2 py-1 rounded bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-[11px] font-semibold border border-purple-200 dark:border-purple-800 disabled:opacity-50"
+                            title="Mark as suspicious activity"
+                          >
+                            Suspicious
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="text-rose-600 hover:underline"
+                          onClick={() => navigate('item-detail', { id: item.id })}
+                          className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-[11px] font-medium"
                         >
-                          Delete
+                          View
                         </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        {!item.isDeleted && (
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors"
+                            title="Soft delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -514,6 +778,83 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
         </div>
       )}
 
+      {/* Tab: FLAGGED LISTINGS */}
+      {activeTab === 'flagged' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Community Flagged Listings</h3>
+            <span className="text-xs text-slate-400">
+              {listingReports.filter(l => l.status === 'pending').length} pending review
+            </span>
+          </div>
+
+          {listingReports.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+              No listings currently flagged by the community.
+            </div>
+          ) : (
+            listingReports.map(flag => (
+              <div
+                key={flag.id}
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-bold uppercase text-[10px]">
+                    <Flag className="w-3 h-3" />
+                    {flag.reason}
+                  </span>
+                  <span className="text-slate-400">
+                    Status: <strong className="uppercase">{flag.status}</strong> · {flag.createdAt ? new Date(flag.createdAt).toLocaleDateString() : ''}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {flag.listingTitle || 'Flagged Item'}
+                    </p>
+                    <p className="text-xs text-slate-400 font-mono">
+                      Listing ID: {flag.listingId}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('item-detail', { id: flag.listingId })}
+                    className="text-xs text-theme-main font-semibold hover:underline"
+                  >
+                    View Listing &rarr;
+                  </button>
+                </div>
+
+                {flag.description && (
+                  <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl">
+                    "{flag.description}"
+                  </p>
+                )}
+
+                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  {flag.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleResolveListingReport(flag.id, 'dismissed')}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 text-xs font-semibold"
+                      >
+                        Dismiss Flag
+                      </button>
+                      <button
+                        onClick={() => handleResolveListingReport(flag.id, 'reviewed')}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
+                      >
+                        Mark Reviewed
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Tab 5: USERS & ROLES */}
       {activeTab === 'users' && (
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-x-auto">
@@ -524,8 +865,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
                 <th className="pb-3 px-2">Email</th>
                 <th className="pb-3 px-2">Department</th>
                 <th className="pb-3 px-2">Role</th>
-                <th className="pb-3 px-2">Status</th>
-                <th className="pb-3 px-2 text-right">Actions</th>
+                <th className="pb-3 px-2">Account</th>
+                <th className="pb-3 px-2">Report Submissions</th>
+                <th className="pb-3 px-2 text-right">Moderation Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -549,12 +891,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
                   </td>
                   <td className="py-3 px-2">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      u.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      u.isActive !== false ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
                     }`}>
                       {u.isActive !== false ? 'Active' : 'Suspended'}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-right">
+                  <td className="py-3 px-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase ${
+                        u.reportingRestricted ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {u.reportingRestricted ? 'Restricted (24h)' : 'Allowed'}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {u.reportsSubmitted || 0} submitted ({u.reportsApproved || 0} approved, {u.reportsRejected || 0} rejected)
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-right space-x-2 whitespace-nowrap">
+                    <button
+                      onClick={() => handleToggleUserRestriction(u.uid, !!u.reportingRestricted)}
+                      className={`text-xs font-semibold px-2 py-1 rounded border ${
+                        u.reportingRestricted
+                          ? 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
+                          : 'border-amber-300 text-amber-600 hover:bg-amber-50'
+                      }`}
+                      title={u.reportingRestricted ? 'Lift restriction' : 'Restrict report submissions for 24 hours'}
+                    >
+                      {u.reportingRestricted ? 'Lift Restriction' : 'Restrict 24h'}
+                    </button>
                     <button
                       onClick={() => handleToggleSuspension(u.uid, u.isActive !== false)}
                       className={`text-xs font-semibold ${
@@ -568,6 +933,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Tab: AUDIT LOGS */}
+      {activeTab === 'audit' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <History className="w-4 h-4 text-purple-600" />
+              Administrative Audit Logs
+            </h3>
+            <span className="text-xs text-slate-400">
+              Chronological log of moderation decisions and restrictions
+            </span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-x-auto">
+            {auditLogs.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">No moderation actions logged yet.</div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase font-semibold">
+                    <th className="pb-3 px-2">Timestamp</th>
+                    <th className="pb-3 px-2">Action</th>
+                    <th className="pb-3 px-2">Target</th>
+                    <th className="pb-3 px-2">Admin</th>
+                    <th className="pb-3 px-2">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {auditLogs.map(log => (
+                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="py-2.5 px-2 text-slate-400 font-mono text-[11px]">
+                        {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Recent'}
+                      </td>
+                      <td className="py-2.5 px-2 font-bold uppercase text-[10px]">
+                        <span className={`px-2 py-0.5 rounded ${
+                          log.action.includes('approve')
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                            : log.action.includes('reject') || log.action.includes('restrict')
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
+                            : log.action.includes('suspicious')
+                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300'
+                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}>
+                          {log.action.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-slate-600 dark:text-slate-300 text-xs">
+                        <div className="font-semibold">{log.reportTitle || 'Report'}</div>
+                        <div className="font-mono text-[10px] text-slate-400">ID: {log.reportId ? log.reportId.slice(0, 10) : 'N/A'}</div>
+                      </td>
+                      <td className="py-2.5 px-2 text-slate-500">
+                        {log.adminEmail || log.adminUid || 'Admin'}
+                      </td>
+                      <td className="py-2.5 px-2 text-slate-500 italic max-w-xs truncate">
+                        {log.reason || log.moderationNotes || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 

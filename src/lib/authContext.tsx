@@ -87,14 +87,56 @@ export function formatAuthError(error: any): string {
   return message || 'Authentication failed. Please check your network and try again.';
 }
 
+const CACHED_PROFILE_KEY = 'campusfind_current_profile';
+const CACHED_CLAIMS_KEY = 'campusfind_current_claims';
+
+function getCachedProfile(): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(CACHED_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function getCachedAdminClaim(): boolean {
+  try {
+    return localStorage.getItem(CACHED_CLAIMS_KEY) === 'true';
+  } catch {}
+  return false;
+}
+
+function setCachedProfile(prof: UserProfile | null, isAdminClaim: boolean) {
+  try {
+    if (prof) {
+      localStorage.setItem(CACHED_PROFILE_KEY, JSON.stringify(prof));
+      localStorage.setItem(CACHED_CLAIMS_KEY, isAdminClaim ? 'true' : 'false');
+    } else {
+      localStorage.removeItem(CACHED_PROFILE_KEY);
+      localStorage.removeItem(CACHED_CLAIMS_KEY);
+    }
+  } catch {}
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [hasAdminClaim, setHasAdminClaim] = useState(false);
+  const cachedProf = getCachedProfile();
+  const cachedAdmin = getCachedAdminClaim();
+
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const [profile, setProfile] = useState<UserProfile | null>(cachedProf);
+  // If we already have a cached profile or auth.currentUser, don't show blocking loading screen
+  const [loading, setLoading] = useState<boolean>(!cachedProf && !auth.currentUser);
+  const [hasAdminClaim, setHasAdminClaim] = useState<boolean>(cachedAdmin);
 
   // Strictly inspect Firebase Auth Custom Claims from refreshed ID token
-  const inspectCustomClaims = async (user: User, forceRefresh: boolean = true): Promise<boolean> => {
+  const inspectCustomClaims = async (user: User, forceRefresh: boolean = false): Promise<boolean> => {
     try {
       if (forceRefresh) {
         await user.getIdToken(true);
@@ -105,7 +147,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return isAdminByClaim;
     } catch (e) {
       console.warn('Could not read custom claims from Firebase ID token:', e);
-      setHasAdminClaim(false);
       return false;
     }
   };
@@ -115,8 +156,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isAdminUser = forceAdmin ?? false;
 
     try {
-      const snapshot = await getDoc(userRef);
-      if (snapshot.exists()) {
+      const snapshot = await withTimeout(getDoc(userRef), 1500, null as any);
+      if (snapshot && typeof snapshot.exists === 'function' && snapshot.exists()) {
         const data = snapshot.data() as UserProfile;
 
         // If user possesses verified admin custom claim, keep Firestore document role in sync
@@ -129,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         return data;
-      } else {
+      } else if (snapshot && typeof snapshot.exists === 'function' && !snapshot.exists()) {
         // Create initial profile if missing
         const newProfile: UserProfile = {
           uid: user.uid,
@@ -152,38 +193,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isOfflineError(error)) {
         console.warn('Could not fetch user document from Firestore:', error);
       }
-
-      // Offline / fallback profile
-      return {
-        uid: user.uid,
-        name: user.displayName || user.email?.split('@')[0] || 'Campus User',
-        email: user.email || '',
-        role: isAdminUser ? 'admin' : 'student',
-        isActive: true,
-        photoURL: user.photoURL || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
     }
+
+    // Check localStorage cached users before defaulting
+    try {
+      const rawUsers = localStorage.getItem('campusfind_users');
+      if (rawUsers) {
+        const parsed: UserProfile[] = JSON.parse(rawUsers);
+        const match = parsed.find(u => u.uid === user.uid);
+        if (match) return match;
+      }
+    } catch {}
+
+    // Offline / fallback profile
+    return {
+      uid: user.uid,
+      name: user.displayName || user.email?.split('@')[0] || 'Campus User',
+      email: user.email || '',
+      role: isAdminUser ? 'admin' : 'student',
+      isActive: true,
+      photoURL: user.photoURL || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          // Requirement 4 & 11: Force refresh Firebase ID token using await user.getIdToken(true)
-          await user.getIdToken(true);
-          const idTokenResult = await user.getIdTokenResult(true);
-          const isAdminByClaim = idTokenResult.claims.admin === true;
-          setHasAdminClaim(isAdminByClaim);
-          setCurrentUser(user);
+    // Fast safety fallback: If auth state check hasn't completed within 350ms,
+    // unblock loading so the user is never stuck on "Checking campus session..."
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 350);
 
-          const userProf = await fetchProfile(user, isAdminByClaim);
-          setProfile(userProf);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      clearTimeout(safetyTimer);
+      if (user) {
+        setCurrentUser(user);
+
+        // 1. Instant local token inspect (cached, in-memory, 0ms)
+        let isAdminByClaim = false;
+        try {
+          const cachedTokenResult = await user.getIdTokenResult(false);
+          isAdminByClaim = cachedTokenResult.claims.admin === true;
+          setHasAdminClaim(isAdminByClaim);
+
+          // If we have cached profile matching this user, unblock loading immediately!
+          const currentCached = getCachedProfile();
+          if (currentCached && currentCached.uid === user.uid) {
+            setProfile(currentCached);
+            setLoading(false);
+          }
+        } catch {
+          // quiet fallback
+        }
+
+        // 2. Fetch fresh profile and verify claims with a fast 1500ms timeout
+        try {
+          const userProf = await withTimeout(fetchProfile(user, isAdminByClaim), 1500, null);
+          if (userProf) {
+            setProfile(userProf);
+            setCachedProfile(userProf, isAdminByClaim || userProf.role === 'admin' || userProf.role === 'superadmin');
+          }
         } catch (err) {
-          console.warn('Error verifying token claims on auth state change:', err);
-          setCurrentUser(user);
-          setHasAdminClaim(false);
+          console.warn('Notice loading user profile on auth change:', err);
         } finally {
           setLoading(false);
         }
@@ -191,11 +263,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(null);
         setProfile(null);
         setHasAdminClaim(false);
+        setCachedProfile(null, false);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   const loginWithEmail = async (email: string, pass: string): Promise<AuthSuccessResult> => {
@@ -216,6 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const userProfile = await fetchProfile(user, isAdminByClaim);
     setProfile(userProfile);
+    setCachedProfile(userProfile, isAdminByClaim);
 
     return {
       user,
@@ -269,6 +346,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(user);
     setProfile(newProfile);
     setHasAdminClaim(false);
+    setCachedProfile(newProfile, false);
 
     return {
       user,
@@ -291,6 +369,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const p = await fetchProfile(user, isAdminByClaim);
     setProfile(p);
+    setCachedProfile(p, isAdminByClaim);
 
     return {
       user,
@@ -304,6 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
     setProfile(null);
     setHasAdminClaim(false);
+    setCachedProfile(null, false);
   };
 
   /**
@@ -354,7 +434,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setProfile(prev => {
       if (!prev) return null;
-      return { ...prev, ...safeUpdates };
+      const updated = { ...prev, ...safeUpdates };
+      setCachedProfile(updated, hasAdminClaim);
+      return updated;
     });
 
     try {

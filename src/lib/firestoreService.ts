@@ -256,6 +256,20 @@ function setStoredMessages(claimId: string, messages: ChatMessage[]): void {
   } catch {}
 }
 
+function getStoredUsers(): UserProfile[] {
+  try {
+    const raw = localStorage.getItem(USERS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function setStoredUsers(users: UserProfile[]): void {
+  try {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  } catch {}
+}
+
 /* ----------------- ITEMS ----------------- */
 
 export interface CreateItemResult {

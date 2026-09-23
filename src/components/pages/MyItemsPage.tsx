@@ -29,7 +29,7 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
-  const [filter, setFilter] = useState<'all' | 'lost' | 'found' | 'returned'>(
+  const [filter, setFilter] = useState<'all' | 'lost' | 'found' | 'pending' | 'returned'>(
     (initialFilter as any) || 'all'
   );
   const [loading, setLoading] = useState(true);
@@ -39,8 +39,8 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
       if (!currentUser) return;
       setLoading(true);
       try {
-        const all = await getAllItemsFromFirestore(false);
-        setItems(all.filter(i => i.reportedBy === currentUser.uid));
+        const all = await getAllItemsFromFirestore(false, false);
+        setItems(all.filter(i => (i.reportedBy === currentUser.uid || i.createdBy === currentUser.uid)));
       } catch (err) {
         console.error('Failed to load user items:', err);
       } finally {
@@ -72,7 +72,8 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
 
   const filteredItems = items.filter(item => {
     if (filter === 'all') return true;
-    if (filter === 'returned') return item.status === 'returned';
+    if (filter === 'returned') return item.status === 'returned' || item.status === 'resolved';
+    if (filter === 'pending') return item.status === 'pending';
     return item.type === filter;
   });
 
@@ -140,6 +141,16 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
           Found ({items.filter(i => i.type === 'found').length})
         </button>
         <button
+          onClick={() => setFilter('pending')}
+          className={`px-3 py-1.5 rounded-lg transition-all ${
+            filter === 'pending'
+              ? 'bg-amber-500 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          Pending Verification ({items.filter(i => i.status === 'pending').length})
+        </button>
+        <button
           onClick={() => setFilter('returned')}
           className={`px-3 py-1.5 rounded-lg transition-all ${
             filter === 'returned'
@@ -147,7 +158,7 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
               : 'text-slate-600 dark:text-slate-400'
           }`}
         >
-          Returned ({items.filter(i => i.status === 'returned').length})
+          Returned / Resolved ({items.filter(i => i.status === 'returned' || i.status === 'resolved').length})
         </button>
       </div>
 
@@ -184,7 +195,7 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
                     <FileQuestion className="w-10 h-10 text-slate-400" />
                   )}
 
-                  <div className="absolute top-3 left-3 flex space-x-1.5">
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
                     <span
                       className={`px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm ${
                         item.type === 'lost' ? 'bg-rose-600' : 'bg-emerald-600'
@@ -192,9 +203,29 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
                     >
                       {item.type}
                     </span>
-                    {item.status === 'returned' && (
-                      <span className="px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 text-white shadow-sm">
-                        Returned
+                    {item.status === 'pending' && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
+                        Pending Verification
+                      </span>
+                    )}
+                    {item.status === 'approved' && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
+                        Live & Approved
+                      </span>
+                    )}
+                    {item.status === 'rejected' && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-600 text-white shadow-sm">
+                        Rejected
+                      </span>
+                    )}
+                    {item.status === 'suspicious' && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-purple-600 text-white shadow-sm">
+                        Under Review
+                      </span>
+                    )}
+                    {(item.status === 'returned' || item.status === 'resolved') && (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-white shadow-sm">
+                        Resolved
                       </span>
                     )}
                   </div>
@@ -213,6 +244,25 @@ export const MyItemsPage: React.FC<MyItemsPageProps> = ({
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                     {item.description}
                   </p>
+
+                  {/* Moderation Status Feedback Banners */}
+                  {item.status === 'pending' && (
+                    <div className="mt-2.5 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                      Under verification: Campus administrators verify all reports to prevent spam before making them public.
+                    </div>
+                  )}
+
+                  {item.status === 'rejected' && (
+                    <div className="mt-2.5 px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/50 text-[11px] text-rose-800 dark:text-rose-300 font-medium">
+                      Report rejected: {item.rejectionReason || 'Insufficient verification details provided.'}
+                    </div>
+                  )}
+
+                  {item.duplicateWarning && (
+                    <div className="mt-2 px-2 py-1 rounded bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-[10px] text-orange-700 dark:text-orange-300 font-medium">
+                      {item.duplicateWarning}
+                    </div>
+                  )}
 
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center space-x-1">

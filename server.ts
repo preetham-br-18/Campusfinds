@@ -7,6 +7,7 @@ import {
   setAdminCustomClaim,
   setAdminCustomClaimByEmail,
   getAdminAuth,
+  getAdminFirestore,
   isServiceAccountConfigured
 } from "./server/firebaseAdmin.js";
 
@@ -221,7 +222,7 @@ app.post("/api/reports/submit", async (req, res) => {
     // Check for identical submissions within 24 hours
     let identicalCount = 0;
     const normalizedNew = `${cleanTitle.toLowerCase()} ${cleanDescription.toLowerCase()}`;
-    recentReportsSnapshot.forEach((docSnap) => {
+    recentReportsSnapshot.forEach((docSnap: any) => {
       const d = docSnap.data();
       const normExisting = `${(d.title || '').toLowerCase()} ${(d.description || '').toLowerCase()}`;
       if (normExisting === normalizedNew) {
@@ -250,7 +251,7 @@ app.post("/api/reports/submit", async (req, res) => {
 
     const incomingTokens = tokenize(`${cleanTitle} ${cleanDescription} ${cleanLocationName}`);
 
-    candidateSnapshot.forEach((docSnap) => {
+    candidateSnapshot.forEach((docSnap: any) => {
       const cand = docSnap.data();
       if (cand.reportedBy === user.uid) return; // ignore own items
       const candTokens = tokenize(`${cand.title || ''} ${cand.description || ''} ${cand.locationName || ''}`);
@@ -652,7 +653,7 @@ app.get("/api/admin/audit-logs", async (req, res) => {
     const db = getAdminFirestore();
     const snap = await db.collection("adminAuditLogs").orderBy("timestamp", "desc").limit(50).get();
     const logs: any[] = [];
-    snap.forEach(docSnap => {
+    snap.forEach((docSnap: any) => {
       logs.push({ id: docSnap.id, ...docSnap.data() });
     });
     return res.json({ logs });

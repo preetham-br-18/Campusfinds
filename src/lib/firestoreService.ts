@@ -19,11 +19,15 @@ import {
   ChatMessage,
   AppNotification,
   AbuseReport,
+  AbuseReason,
   CampusLocation,
   SystemSettings,
   UserProfile,
-  UserRole
+  UserRole,
+  AdminAuditLog,
+  ListingReport
 } from '../types';
+import { auth } from './firebase';
 import { DEFAULT_CATEGORIES, DEFAULT_LOCATIONS, DEFAULT_HANDOVER_LOCATIONS } from './constants';
 
 /* ----------------- LOCAL PERSISTENCE HELPERS ----------------- */
@@ -46,11 +50,12 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     locationName: 'Main Block',
     currentPossession: 'Room 204, Second floor desk row 3',
     dateOfIncident: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
-    status: 'open',
+    status: 'approved',
     description: 'Black Casio ClassWiz calculator left after morning Physics examination. It is in good condition with minor scratches on sliding cover.',
     secretIdentifyingDetails: 'Sticker on battery cover or inscribed initials inside cover',
     contactPreference: 'in_app',
     reportedBy: 'admin-system-seed',
+    createdBy: 'admin-system-seed',
     reporterName: 'Campus Security Desk',
     imageUrls: [],
     isDeleted: false,
@@ -67,11 +72,12 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     locationName: 'Library',
     currentPossession: 'Quiet study tables on the 1st Floor',
     dateOfIncident: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
-    status: 'open',
+    status: 'approved',
     description: 'Deep navy blue metal bottle with an insulated wide-mouth straw lid. Has multiple tech and campus club stickers.',
     secretIdentifyingDetails: 'Specific laptop sticker brands on side or dent on lower rim',
     contactPreference: 'in_app',
     reportedBy: 'student-ananya',
+    createdBy: 'student-ananya',
     reporterName: 'Ananya Sharma',
     imageUrls: [],
     isDeleted: false,
@@ -88,11 +94,12 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     locationName: 'Campus Bus Stop',
     currentPossession: 'College Security Office (Main Gate)',
     dateOfIncident: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    status: 'open',
+    status: 'approved',
     description: 'Found smart campus identity card on the wooden bench. Deposited securely with the College Main Gate Security.',
     secretIdentifyingDetails: 'Student USN / Roll number and branch name',
     contactPreference: 'in_app',
     reportedBy: 'admin-system-seed',
+    createdBy: 'admin-system-seed',
     reporterName: 'Officer Murthy (Security)',
     imageUrls: [],
     isDeleted: false,
@@ -109,11 +116,12 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     locationName: 'Sports Arena & Gym',
     currentPossession: 'Badminton court 2 spectator bench',
     dateOfIncident: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    status: 'open',
+    status: 'approved',
     description: 'White AirPods charging case with both buds inside. Has a clear silicone protective shell.',
     secretIdentifyingDetails: 'Exact Bluetooth broadcast name or keychain attachment',
     contactPreference: 'in_app',
     reportedBy: 'student-karthik',
+    createdBy: 'student-karthik',
     reporterName: 'Karthik Rao',
     imageUrls: [],
     isDeleted: false,
@@ -130,11 +138,12 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     locationName: 'Laboratory Complex',
     currentPossession: 'Computer Lab 3, Workstation #18',
     dateOfIncident: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-    status: 'open',
+    status: 'approved',
     description: 'Standard black Dell Type-C charging adapter with three-pin cable. Wrapped with a yellow cable tie.',
     secretIdentifyingDetails: 'Marking or initials written on the adapter block',
     contactPreference: 'in_app',
     reportedBy: 'student-rahul',
+    createdBy: 'student-rahul',
     reporterName: 'Rahul Verma',
     imageUrls: [],
     isDeleted: false,
@@ -151,11 +160,12 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     locationName: 'Canteen & Food Court',
     currentPossession: 'College Security Office (Main Gate)',
     dateOfIncident: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(),
-    status: 'returned',
+    status: 'resolved',
     description: 'WildHorn genuine brown leather wallet with metro transit pass and library card. Verified and returned to owner!',
     secretIdentifyingDetails: 'Bank card bank name and family photo inside',
     contactPreference: 'in_app',
     reportedBy: 'student-sneha',
+    createdBy: 'student-sneha',
     reporterName: 'Sneha Patel',
     imageUrls: [],
     isDeleted: false,
@@ -248,12 +258,80 @@ function setStoredMessages(claimId: string, messages: ChatMessage[]): void {
 
 /* ----------------- ITEMS ----------------- */
 
-export async function createItemInFirestore(itemData: Omit<Item, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+export interface CreateItemResult {
+  itemId: string;
+  duplicateWarning?: string | null;
+  status: 'pending';
+}
+
+export async function createItemInFirestore(
+  itemData: Omit<Item, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> {
   const path = 'items';
   const now = new Date().toISOString();
+  const currentAuth = auth.currentUser;
+
+  // 1. Attempt secure server-side submission with rate limiting and anti-spam
+  try {
+    let idToken: string | null = null;
+    if (currentAuth && typeof currentAuth.getIdToken === 'function') {
+      idToken = await currentAuth.getIdToken();
+    }
+
+    if (idToken) {
+      const response = await fetch('/api/reports/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          ...itemData,
+          status: 'pending' // client always sends pending; server also enforces pending
+        })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || 'Failed to submit report.');
+      }
+
+      if (resData.success && resData.id) {
+        const newItem: Item = {
+          ...itemData,
+          id: resData.id,
+          status: 'pending',
+          createdBy: currentAuth?.uid || itemData.reportedBy,
+          isDuplicate: Boolean(resData.duplicateWarning),
+          duplicateWarning: resData.duplicateWarning || null,
+          isDeleted: false,
+          reportedCount: 0,
+          createdAt: now,
+          updatedAt: now
+        };
+        const currentItems = getStoredItems();
+        setStoredItems([newItem, ...currentItems]);
+        return resData.id;
+      }
+    }
+  } catch (apiErr: any) {
+    // If it's a rate limit error (429) or forbidden restriction error (403), re-throw immediately!
+    if (
+      apiErr.message?.includes('submission limit') ||
+      apiErr.message?.includes('restricted') ||
+      apiErr.message?.includes('characters')
+    ) {
+      throw apiErr;
+    }
+    console.warn('Backend submission fallback to Firestore client SDK:', apiErr);
+  }
+
+  // 2. Direct Firestore Client Creation (strict status = "pending")
   const localId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
   const newItem: Item = {
     ...itemData,
+    status: 'pending', // Strictly pending!
+    createdBy: currentAuth?.uid || itemData.reportedBy,
     id: localId,
     isDeleted: false,
     reportedCount: 0,
@@ -261,22 +339,23 @@ export async function createItemInFirestore(itemData: Omit<Item, 'id' | 'created
     updatedAt: now
   };
 
-  // 1. Immediately store in local persistence
+  // Store in local persistence
   const currentItems = getStoredItems();
   setStoredItems([newItem, ...currentItems]);
 
-  // 2. Attempt Firestore creation if online
   try {
     const colRef = collection(db, path);
     const docRef = await addDoc(colRef, {
       ...itemData,
+      status: 'pending', // Always pending
+      createdBy: currentAuth?.uid || itemData.reportedBy,
+      reportedBy: currentAuth?.uid || itemData.reportedBy,
       isDeleted: false,
       reportedCount: 0,
       createdAt: now,
       updatedAt: now
     });
-    // Replace temporary local ID with real Firestore document ID
-    const updatedItems = getStoredItems().map(it => it.id === localId ? { ...it, id: docRef.id } : it);
+    const updatedItems = getStoredItems().map(it => (it.id === localId ? { ...it, id: docRef.id } : it));
     setStoredItems(updatedItems);
     return docRef.id;
   } catch (err) {
@@ -341,7 +420,15 @@ export async function getItemByIdFromFirestore(itemId: string): Promise<Item | n
   }
 }
 
-export async function getAllItemsFromFirestore(includeDeleted = false): Promise<Item[]> {
+/**
+ * Loads items from Firestore.
+ * By default for public directory, only returns APPROVED (and resolved/open) listings.
+ * Pending, rejected, and suspicious reports are strictly hidden from public view.
+ */
+export async function getAllItemsFromFirestore(
+  includeDeleted = false,
+  isPublicOnly = true
+): Promise<Item[]> {
   const path = 'items';
   const localItems = getStoredItems();
 
@@ -358,17 +445,29 @@ export async function getAllItemsFromFirestore(includeDeleted = false): Promise<
       });
       const sorted = items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setStoredItems(sorted);
+
+      if (isPublicOnly && !includeDeleted) {
+        return sorted.filter(
+          i => !i.isDeleted && (i.status === 'approved' || i.status === 'resolved' || i.status === 'open')
+        );
+      }
       return sorted;
     }
   } catch (err) {
-    // Silently fall back to local items when offline or unprovisioned
     if (!isOfflineError(err)) {
       console.warn('Notice loading items from cloud, using local store:', err);
     }
   }
 
   const filtered = includeDeleted ? localItems : localItems.filter(i => !i.isDeleted);
-  return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sorted = filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (isPublicOnly && !includeDeleted) {
+    return sorted.filter(
+      i => !i.isDeleted && (i.status === 'approved' || i.status === 'resolved' || i.status === 'open')
+    );
+  }
+  return sorted;
 }
 
 export async function getCampusStatisticsFromFirestore(): Promise<{
@@ -1005,3 +1104,325 @@ export async function updateSystemSettingsInFirestore(updates: Partial<SystemSet
     }
   }
 }
+
+/* ==================================================
+   ADMIN MODERATION, AUDIT LOGS, & USER RESTRICTION
+   ================================================== */
+
+const AUDIT_LOGS_KEY = 'campusfind_audit_logs';
+const LISTING_REPORTS_KEY = 'campusfind_listing_reports';
+
+function getStoredAuditLogs(): AdminAuditLog[] {
+  try {
+    const raw = localStorage.getItem(AUDIT_LOGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function setStoredAuditLogs(logs: AdminAuditLog[]): void {
+  try {
+    localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs));
+  } catch {}
+}
+
+function getStoredListingReports(): ListingReport[] {
+  try {
+    const raw = localStorage.getItem(LISTING_REPORTS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function setStoredListingReports(reports: ListingReport[]): void {
+  try {
+    localStorage.setItem(LISTING_REPORTS_KEY, JSON.stringify(reports));
+  } catch {}
+}
+
+/**
+ * Admin action to approve, reject, mark suspicious, or resolve a report.
+ * Invokes the secure server-side endpoint with Firebase ID token, with fallback to Firestore.
+ */
+export async function moderateReportInFirestore(
+  reportId: string,
+  action: 'approve' | 'reject' | 'mark_suspicious' | 'resolve',
+  options?: {
+    rejectionReason?: string;
+    suspiciousReason?: string;
+    moderationNotes?: string;
+  }
+): Promise<void> {
+  const currentAuth = auth.currentUser;
+  let idToken: string | null = null;
+  if (currentAuth && typeof currentAuth.getIdToken === 'function') {
+    idToken = await currentAuth.getIdToken();
+  }
+
+  const now = new Date().toISOString();
+  let newStatus: any = 'pending';
+  if (action === 'approve') newStatus = 'approved';
+  else if (action === 'reject') newStatus = 'rejected';
+  else if (action === 'mark_suspicious') newStatus = 'suspicious';
+  else if (action === 'resolve') newStatus = 'resolved';
+
+  // 1. Try server endpoint
+  let serverHandled = false;
+  if (idToken) {
+    try {
+      const res = await fetch('/api/admin/reports/moderate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          reportId,
+          action,
+          rejectionReason: options?.rejectionReason,
+          suspiciousReason: options?.suspiciousReason,
+          moderationNotes: options?.moderationNotes
+        })
+      });
+      if (res.ok) {
+        serverHandled = true;
+      }
+    } catch (e) {
+      console.warn('Backend moderation endpoint notice, falling back to Firestore direct update:', e);
+    }
+  }
+
+  // 2. Update local state
+  const currentItems = getStoredItems();
+  const existing = currentItems.find(i => i.id === reportId);
+  const updatedItems = currentItems.map(it => {
+    if (it.id === reportId) {
+      return {
+        ...it,
+        status: newStatus,
+        reviewedBy: currentAuth?.uid || 'admin',
+        reviewedAt: now,
+        rejectionReason: action === 'reject' ? (options?.rejectionReason || 'Insufficient information') : it.rejectionReason,
+        suspiciousReason: action === 'mark_suspicious' ? (options?.suspiciousReason || 'Flagged for moderation review') : it.suspiciousReason,
+        moderationNotes: options?.moderationNotes || it.moderationNotes,
+        updatedAt: now
+      };
+    }
+    return it;
+  });
+  setStoredItems(updatedItems);
+
+  // Record in local audit logs
+  const auditLog: AdminAuditLog = {
+    id: 'log_' + Date.now(),
+    reportId,
+    reportTitle: existing?.title || 'Report',
+    adminUid: currentAuth?.uid || 'admin',
+    adminEmail: currentAuth?.email || 'admin@campusfind.edu',
+    action: `${action}_report` as any,
+    previousStatus: existing?.status || 'pending',
+    newStatus,
+    reason: options?.rejectionReason || options?.suspiciousReason || null,
+    moderationNotes: options?.moderationNotes || null,
+    timestamp: now
+  };
+  setStoredAuditLogs([auditLog, ...getStoredAuditLogs()]);
+
+  // 3. Update Firestore directly if server didn't handle it
+  if (!serverHandled) {
+    try {
+      const docRef = doc(db, 'items', reportId);
+      await updateDoc(docRef, {
+        status: newStatus,
+        reviewedBy: currentAuth?.uid || 'admin',
+        reviewedAt: now,
+        rejectionReason: action === 'reject' ? (options?.rejectionReason || 'Insufficient information') : null,
+        suspiciousReason: action === 'mark_suspicious' ? (options?.suspiciousReason || 'Flagged for moderation review') : null,
+        moderationNotes: options?.moderationNotes || null,
+        updatedAt: now
+      });
+
+      // Add to Firestore adminAuditLogs
+      await addDoc(collection(db, 'adminAuditLogs'), auditLog);
+    } catch (err) {
+      if (!isOfflineError(err)) {
+        console.warn('Error updating report status in Firestore:', err);
+      }
+    }
+  }
+}
+
+/**
+ * Restricts or unrestricts a user's report submission access
+ */
+export async function restrictUserInFirestore(
+  userId: string,
+  restricted: boolean,
+  durationHours = 24,
+  reason?: string
+): Promise<void> {
+  const currentAuth = auth.currentUser;
+  let idToken: string | null = null;
+  if (currentAuth && typeof currentAuth.getIdToken === 'function') {
+    idToken = await currentAuth.getIdToken();
+  }
+
+  if (idToken) {
+    try {
+      await fetch('/api/admin/users/restrict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ userId, restricted, durationHours, reason })
+      });
+    } catch (e) {
+      console.warn('Backend user restriction fallback:', e);
+    }
+  }
+
+  // Local update
+  const users = getStoredUsers();
+  const restrictionUntil = restricted ? new Date(Date.now() + durationHours * 3600 * 1000).toISOString() : null;
+  const updated = users.map(u => (u.uid === userId ? {
+    ...u,
+    reportingRestricted: restricted,
+    restrictionUntil,
+    restrictionReason: reason || null
+  } : u));
+  setStoredUsers(updated);
+
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      reportingRestricted: restricted,
+      restrictionUntil,
+      restrictionReason: reason || null
+    });
+  } catch (err) {
+    if (!isOfflineError(err)) {
+      console.warn('Notice updating user restriction in Firestore:', err);
+    }
+  }
+}
+
+/**
+ * Student flags an approved listing ("Report this listing")
+ */
+export async function reportListingInFirestore(
+  listingId: string,
+  listingTitle: string,
+  reason: AbuseReason,
+  description: string
+): Promise<void> {
+  const currentAuth = auth.currentUser;
+  let idToken: string | null = null;
+  if (currentAuth && typeof currentAuth.getIdToken === 'function') {
+    idToken = await currentAuth.getIdToken();
+  }
+
+  if (idToken) {
+    try {
+      const res = await fetch('/api/listings/report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ listingId, reason, description })
+      });
+      if (res.ok) return;
+    } catch (e) {
+      console.warn('Backend listing report notice, falling back:', e);
+    }
+  }
+
+  const now = new Date().toISOString();
+  const report: ListingReport = {
+    id: 'flag_' + Date.now(),
+    listingId,
+    listingTitle,
+    reportedBy: currentAuth?.uid || 'student',
+    reporterName: currentAuth?.displayName || currentAuth?.email?.split('@')[0] || 'Student',
+    reporterEmail: currentAuth?.email || '',
+    reason,
+    description,
+    status: 'pending',
+    createdAt: now
+  };
+
+  const stored = getStoredListingReports();
+  setStoredListingReports([report, ...stored]);
+
+  try {
+    await addDoc(collection(db, 'listingReports'), report);
+    const itemRef = doc(db, 'items', listingId);
+    await updateDoc(itemRef, {
+      flaggedForReview: true,
+      updatedAt: now
+    });
+  } catch (err) {
+    if (!isOfflineError(err)) {
+      console.warn('Error saving listing report:', err);
+    }
+  }
+}
+
+export async function getAdminAuditLogsFromFirestore(): Promise<AdminAuditLog[]> {
+  try {
+    const colRef = collection(db, 'adminAuditLogs');
+    const q = query(colRef, orderBy('timestamp', 'desc'), firestoreLimit(50));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      const logs: AdminAuditLog[] = [];
+      snapshot.forEach(docSnap => {
+        logs.push({ id: docSnap.id, ...docSnap.data() } as AdminAuditLog);
+      });
+      setStoredAuditLogs(logs);
+      return logs;
+    }
+  } catch (err) {
+    if (!isOfflineError(err)) {
+      console.warn('Notice loading audit logs from Firestore:', err);
+    }
+  }
+
+  return getStoredAuditLogs().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export async function getListingReportsFromFirestore(): Promise<ListingReport[]> {
+  try {
+    const colRef = collection(db, 'listingReports');
+    const snapshot = await getDocs(colRef);
+    if (!snapshot.empty) {
+      const reports: ListingReport[] = [];
+      snapshot.forEach(docSnap => {
+        reports.push({ id: docSnap.id, ...docSnap.data() } as ListingReport);
+      });
+      setStoredListingReports(reports);
+      return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+  } catch (err) {
+    if (!isOfflineError(err)) {
+      console.warn('Notice loading listing reports from Firestore:', err);
+    }
+  }
+
+  return getStoredListingReports().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function resolveListingReportInFirestore(reportId: string, status: 'reviewed' | 'dismissed'): Promise<void> {
+  const current = getStoredListingReports();
+  setStoredListingReports(current.map(r => (r.id === reportId ? { ...r, status, updatedAt: new Date().toISOString() } : r)));
+
+  try {
+    const ref = doc(db, 'listingReports', reportId);
+    await updateDoc(ref, { status, updatedAt: new Date().toISOString() });
+  } catch (err) {
+    if (!isOfflineError(err)) {
+      console.warn('Notice resolving listing report in Firestore:', err);
+    }
+  }
+}
+

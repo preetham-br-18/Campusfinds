@@ -11,12 +11,31 @@ export interface UserProfile {
   studentId?: string;
   photoURL?: string;
   isActive: boolean;
+  // Abuse tracking & moderation fields
+  reportsSubmitted?: number;
+  reportsApproved?: number;
+  reportsRejected?: number;
+  reportsMarkedSuspicious?: number;
+  lastReportAt?: string;
+  reportingRestricted?: boolean;
+  restrictionUntil?: string | null;
+  restrictionReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export type ItemType = 'lost' | 'found';
-export type ItemStatus = 'open' | 'claimed' | 'returned' | 'closed';
+export type ItemStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'suspicious'
+  | 'resolved'
+  // Legacy status support for existing items
+  | 'open'
+  | 'claimed'
+  | 'returned'
+  | 'closed';
 
 export interface Item {
   id: string;
@@ -25,12 +44,10 @@ export interface Item {
   description: string;
   category: string;
   imageUrls: string[];
-  locationId: string;
+  locationId?: string;
   locationName: string;
-  reportedBy: string;
-  reporterName?: string;
-  reporterEmail?: string;
-  reporterRole?: string;
+  location?: string;
+  date?: string;
   dateOfIncident: string;
   approximateTime?: string;
   timeOfIncident?: string;
@@ -42,6 +59,27 @@ export interface Item {
   isPrivate?: boolean;
   isDeleted?: boolean;
   reportedCount?: number;
+  // User references
+  createdBy?: string; // Authenticated Firebase UID
+  createdByName?: string;
+  createdByEmail?: string;
+  reportedBy: string; // Alias for createdBy
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterRole?: string;
+  // Moderation fields
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  suspiciousReason?: string | null;
+  reportCount?: number;
+  moderationNotes?: string | null;
+  // Anti-spam / Duplicate detection fields
+  isDuplicate?: boolean;
+  duplicateWarning?: string | null;
+  similarToItemId?: string | null;
+  similarityScore?: number | null;
+  flaggedForReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,4 +187,39 @@ export interface AIMatchResult {
   matchedTitle: string;
   matchedCategory: string;
   matchedLocation: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  reportId: string;
+  reportTitle?: string;
+  adminUid: string;
+  adminEmail?: string;
+  action:
+    | 'approve_report'
+    | 'reject_report'
+    | 'mark_suspicious'
+    | 'resolve_report'
+    | 'restrict_user'
+    | 'unrestrict_user'
+    | 'dismiss_flag';
+  previousStatus?: string;
+  newStatus?: string;
+  reason?: string | null;
+  moderationNotes?: string | null;
+  timestamp: string;
+}
+
+export interface ListingReport {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  reportedBy: string;
+  reporterName?: string;
+  reporterEmail?: string;
+  reason: AbuseReason;
+  description: string;
+  status: 'pending' | 'reviewed' | 'dismissed';
+  createdAt: string;
+  updatedAt?: string;
 }

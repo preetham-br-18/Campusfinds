@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "users": {
+      "collectionName": "users",
+      "description": "User profiles for students and campus administrators.",
+      "fields": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name of student or staff" },
+        "email": { "type": "string", "description": "Campus college email address" },
+        "department": { "type": "string", "description": "Academic department" },
+        "year": { "type": "string", "description": "Academic year or designation" },
+        "studentId": { "type": "string", "description": "Student identification number / roll number" },
+        "role": { "type": "string", "description": "Role: student, admin, or superadmin" },
+        "isActive": { "type": "boolean", "description": "Whether the user account is active" },
+        "photoURL": { "type": "string", "description": "Avatar photo URL" },
+        "createdAt": { "type": "string", "description": "Account registration timestamp" },
+        "updatedAt": { "type": "string", "description": "Last profile update timestamp" }
+      },
+      "access": {
+        "read": "request.auth != null",
+        "create": "request.auth != null && request.auth.uid == resource.data.uid && request.resource.data.role == 'student'",
+        "update": "request.auth != null && ((request.auth.uid == resource.data.uid && request.resource.data.role == resource.data.role) || request.auth.token.admin == true)",
+        "delete": "request.auth != null && request.auth.token.admin == true"
+      }
+    },
+    "items": {
+      "collectionName": "items",
+      "description": "Lost and Found listings on campus.",
+      "fields": {
+        "id": { "type": "string", "description": "Item listing unique ID" },
+        "type": { "type": "string", "description": "Type: lost or found" },
+        "title": { "type": "string", "description": "Item title" },
+        "description": { "type": "string", "description": "Item description" },
+        "category": { "type": "string", "description": "Item category" },
+        "imageUrls": { "type": "array", "description": "Item photo URLs" },
+        "locationId": { "type": "string", "description": "Campus location identifier" },
+        "locationName": { "type": "string", "description": "Campus location display name" },
+        "reportedBy": { "type": "string", "description": "UID of the reporting student or staff" },
+        "reporterName": { "type": "string", "description": "Name of reporter" },
+        "reporterEmail": { "type": "string", "description": "Email of reporter" },
+        "dateOfIncident": { "type": "string", "description": "Date item was lost or found" },
+        "status": { "type": "string", "description": "Status: open, claimed, returned, closed" },
+        "isDeleted": { "type": "boolean", "description": "Soft delete flag" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "access": {
+        "read": "true",
+        "create": "request.auth != null && request.resource.data.reportedBy == request.auth.uid",
+        "update": "request.auth != null && (resource.data.reportedBy == request.auth.uid || request.auth.token.admin == true)",
+        "delete": "request.auth != null && (resource.data.reportedBy == request.auth.uid || request.auth.token.admin == true)"
+      }
+    },
+    "claims": {
+      "collectionName": "claims",
+      "description": "Verification claims submitted by owners for found items.",
+      "fields": {
+        "id": { "type": "string", "description": "Claim unique ID" },
+        "itemId": { "type": "string", "description": "Target item listing ID" },
+        "claimantId": { "type": "string", "description": "UID of claimant" },
+        "claimantName": { "type": "string", "description": "Name of claimant" },
+        "ownerId": { "type": "string", "description": "UID of found item reporter" },
+        "status": { "type": "string", "description": "pending, under_review, accepted, rejected, completed" },
+        "proofDetails": { "type": "string", "description": "Secret identifying verification proof" },
+        "createdAt": { "type": "string", "description": "Claim submission timestamp" }
+      },
+      "access": {
+        "read": "request.auth != null && (request.auth.uid == resource.data.claimantId || request.auth.uid == resource.data.ownerId || request.auth.token.admin == true)",
+        "create": "request.auth != null && request.resource.data.claimantId == request.auth.uid",
+        "update": "request.auth != null && (request.auth.uid == resource.data.ownerId || request.auth.token.admin == true)",
+        "delete": "request.auth != null && request.auth.token.admin == true"
+      }
+    },
+    "reports": {
+      "collectionName": "reports",
+      "description": "Flagged inappropriate items or suspicious claims for admin moderation.",
+      "fields": {
+        "id": { "type": "string", "description": "Report ID" },
+        "itemId": { "type": "string", "description": "Reported item ID" },
+        "reporterId": { "type": "string", "description": "UID of reporting user" },
+        "reason": { "type": "string", "description": "Reason for report" },
+        "status": { "type": "string", "description": "pending, reviewed, dismissed" },
+        "createdAt": { "type": "string", "description": "Report timestamp" }
+      },
+      "access": {
+        "read": "request.auth != null && request.auth.token.admin == true",
+        "create": "request.auth != null && request.resource.data.reporterId == request.auth.uid",
+        "update": "request.auth != null && request.auth.token.admin == true",
+        "delete": "request.auth != null && request.auth.token.admin == true"
+      }
+    },
+    "settings": {
+      "collectionName": "settings",
+      "description": "Global campus lost & found configurations.",
+      "fields": {
+        "allowedDomain": { "type": "string", "description": "Required college email domain (e.g. college.edu)" },
+        "autoLockoutDays": { "type": "number", "description": "Days before unclaimed found items go to security archive" }
+      },
+      "access": {
+        "read": "true",
+        "create": "request.auth != null && request.auth.token.admin == true",
+        "update": "request.auth != null && request.auth.token.admin == true",
+        "delete": "request.auth != null && request.auth.token.admin == true"
+      }
+    }
+  }
+}

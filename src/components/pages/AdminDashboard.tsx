@@ -27,6 +27,7 @@ import {
   UserRole
 } from '../../types';
 import { useAuth } from '../../lib/authContext';
+import { UnauthorizedPage } from './UnauthorizedPage';
 import {
   getAllItemsFromFirestore,
   getAllClaimsFromFirestore,
@@ -48,7 +49,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, getIdToken } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'claims' | 'reports' | 'users' | 'locations' | 'settings'>('overview');
 
   const [items, setItems] = useState<Item[]>([]);
@@ -96,25 +97,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
   }, []);
 
   if (!isAdmin) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-20 text-center space-y-4">
-        <Shield className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Admin Access Restricted</h2>
-        <p className="text-xs text-slate-500">
-          This portal is reserved for campus administrators and moderators.
-        </p>
-        <button
-          onClick={() => navigate('home')}
-          className="px-4 py-2 text-xs font-semibold rounded-xl btn-theme"
-        >
-          Return Home
-        </button>
-      </div>
-    );
+    return <UnauthorizedPage navigate={navigate} />;
   }
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
+      if (currentUser) {
+        try {
+          const idToken = (await getIdToken()) || (typeof currentUser.getIdToken === 'function' ? await currentUser.getIdToken() : null);
+          if (idToken) {
+            await fetch('/api/admin/set-claim', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                uid: userId,
+                admin: newRole === 'admin' || newRole === 'superadmin'
+              })
+            });
+          }
+        } catch (serverErr) {
+          console.warn('Backend custom claim sync notice:', serverErr);
+        }
+      }
       await updateUserRoleInFirestore(userId, newRole);
       setUsers(users.map(u => (u.uid === userId ? { ...u, role: newRole } : u)));
     } catch (err) {
@@ -185,95 +192,100 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div>
-          <div className="flex items-center space-x-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-              Moderator Portal
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+              Campus Governance
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Admin Verified
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-display mt-1">
-            Campus Administration Console
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight">
+            Administration Console
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Oversee campus listings, user roles, dispute verifications, and safety settings.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Authenticated as <span className="font-semibold text-slate-700 dark:text-slate-200">{currentUser?.email || 'Administrator'}</span> · Full control of campus listings, custom roles, claims, and audit parameters.
           </p>
         </div>
       </div>
 
-      {/* Tabs Bar */}
-      <div className="flex overflow-x-auto rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold space-x-1">
+      {/* Segmented Navigation Bar */}
+      <div className="flex overflow-x-auto rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 text-xs font-medium space-x-1 border border-slate-200/60 dark:border-slate-700/60">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'overview'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Overview
         </button>
         <button
           onClick={() => setActiveTab('items')}
-          className={`px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'items'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Items ({items.length})
         </button>
         <button
           onClick={() => setActiveTab('claims')}
-          className={`px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'claims'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Claims ({claims.length})
         </button>
         <button
           onClick={() => setActiveTab('reports')}
-          className={`relative px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`relative px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'reports'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Abuse Reports ({reports.length})
           {pendingReportsCount > 0 && (
-            <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px]">
+            <span className="ml-1.5 px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-mono">
               {pendingReportsCount}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'users'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Users ({users.length})
         </button>
         <button
           onClick={() => setActiveTab('locations')}
-          className={`px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'locations'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Locations ({locations.length})
         </button>
         <button
           onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2 rounded-xl transition-all shrink-0 ${
+          className={`px-3.5 py-2 rounded-lg transition-all shrink-0 font-medium ${
             activeTab === 'settings'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           Campus Settings
@@ -283,40 +295,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate }) => {
       {/* Tab 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] text-slate-400 block font-medium">Total Users</span>
-              <span className="text-2xl font-bold text-slate-900 dark:text-white mt-1 block">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            <div className="card-stylish p-4 rounded-xl">
+              <span className="text-xs text-slate-400 block font-medium">Total Users</span>
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums mt-1 block">
                 {users.length}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] text-slate-400 block font-medium">Lost Items</span>
-              <span className="text-2xl font-bold text-rose-600 mt-1 block">
+            <div className="card-stylish p-4 rounded-xl">
+              <span className="text-xs text-slate-400 block font-medium">Lost Items</span>
+              <span className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tabular-nums mt-1 block">
                 {items.filter(i => i.type === 'lost' && !i.isDeleted).length}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] text-slate-400 block font-medium">Found Items</span>
-              <span className="text-2xl font-bold text-emerald-600 mt-1 block">
+            <div className="card-stylish p-4 rounded-xl">
+              <span className="text-xs text-slate-400 block font-medium">Found Items</span>
+              <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums mt-1 block">
                 {items.filter(i => i.type === 'found' && !i.isDeleted).length}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] text-slate-400 block font-medium">Active Claims</span>
-              <span className="text-2xl font-bold text-blue-600 mt-1 block">
+            <div className="card-stylish p-4 rounded-xl">
+              <span className="text-xs text-slate-400 block font-medium">Active Claims</span>
+              <span className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 font-mono tabular-nums mt-1 block">
                 {claims.filter(c => c.status === 'pending' || c.status === 'accepted').length}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] text-slate-400 block font-medium">Returned Items</span>
-              <span className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1 block">
+            <div className="card-stylish p-4 rounded-xl">
+              <span className="text-xs text-slate-400 block font-medium">Reunited Items</span>
+              <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 font-mono tabular-nums mt-1 block">
                 {items.filter(i => i.status === 'returned').length}
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] text-slate-400 block font-medium">Pending Reports</span>
-              <span className="text-2xl font-bold text-amber-600 mt-1 block">
+            <div className="card-stylish p-4 rounded-xl">
+              <span className="text-xs text-slate-400 block font-medium">Pending Reports</span>
+              <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 font-mono tabular-nums mt-1 block">
                 {pendingReportsCount}
               </span>
             </div>

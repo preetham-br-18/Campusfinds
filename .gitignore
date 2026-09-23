@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+serviceAccountKey.json
+*service-account*.json
+firebase-adminsdk*.json
+*firebase-adminsdk*.json
+campusfind-215cb-firebase-adminsdk-fbsvc-6131a063fb.json
+scripts/*firebase-adminsdk*.json

@@ -17,15 +17,21 @@ import { MessagesPage } from './components/pages/MessagesPage';
 import { NotificationsPage } from './components/pages/NotificationsPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AdminDashboard } from './components/pages/AdminDashboard';
+import { LoginPage } from './components/pages/LoginPage';
+import { RegisterPage } from './components/pages/RegisterPage';
+import { ForgotPasswordPage } from './components/pages/ForgotPasswordPage';
+import { VerifyEmailPage } from './components/pages/VerifyEmailPage';
+import { UnauthorizedPage } from './components/pages/UnauthorizedPage';
 import { AboutPage } from './components/pages/AboutPage';
 import { PrivacyPage } from './components/pages/PrivacyPage';
 import { TermsPage } from './components/pages/TermsPage';
 
+import { AuthGatePage } from './components/pages/AuthGatePage';
 import { getUserNotificationsFromFirestore } from './lib/firestoreService';
-import { Plus, X, Search, CheckCircle2 } from 'lucide-react';
+import { Plus, X, Search, CheckCircle2, GraduationCap } from 'lucide-react';
 
 function AppContent() {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin, loading } = useAuth();
   const [route, setRoute] = useState<string>('home');
   const [routeParams, setRouteParams] = useState<Record<string, any>>({});
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -35,7 +41,13 @@ function AppContent() {
   // Sync with hash
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '');
+      let hash = window.location.hash.replace(/^#\/?/, '');
+      if (!hash) {
+        const pathPart = window.location.pathname.replace(/^\//, '');
+        if (pathPart === 'admin' || pathPart === 'student' || pathPart === 'dashboard') {
+          hash = pathPart;
+        }
+      }
       if (!hash) {
         setRoute('home');
         setRouteParams({});
@@ -49,7 +61,8 @@ function AppContent() {
           params[k] = v;
         });
       }
-      setRoute(path || 'home');
+      const cleanPath = (path || 'home').replace(/^\//, '');
+      setRoute(cleanPath);
       setRouteParams(params);
     };
 
@@ -59,17 +72,30 @@ function AppContent() {
   }, []);
 
   const navigate = (newRoute: string, params?: Record<string, any>) => {
-    setRoute(newRoute);
+    const cleanRoute = newRoute.replace(/^\//, '');
+    setRoute(cleanRoute);
     setRouteParams(params || {});
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    let hash = `#${newRoute}`;
+    let hash = `#/${cleanRoute}`;
     if (params && Object.keys(params).length > 0) {
       const qs = new URLSearchParams(params as any).toString();
       hash += `?${qs}`;
     }
     window.location.hash = hash;
   };
+
+  // Redirect logged-in user away from login/register, and ensure admin goes to /admin and not /dashboard or /student
+  useEffect(() => {
+    if (loading) return;
+    if (currentUser) {
+      if (isAdmin && (route === 'login' || route === 'register' || route === 'dashboard' || route === 'student')) {
+        navigate('admin');
+      } else if (!isAdmin && (route === 'login' || route === 'register')) {
+        navigate('student');
+      }
+    }
+  }, [currentUser, isAdmin, route, loading]);
 
   // Poll or load notifications for badge
   useEffect(() => {
@@ -93,6 +119,98 @@ function AppContent() {
     const interval = setInterval(checkNotifications, 15000);
     return () => clearInterval(interval);
   }, [currentUser, route]);
+
+  // 1. Initial auth state loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-white">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg animate-pulse">
+            <GraduationCap className="w-6 h-6" />
+          </div>
+          <div className="text-xs font-semibold tracking-wide uppercase text-slate-400">
+            Checking campus session...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Authentication Gate: Users MUST see login and signup options before accessing the interface
+  if (!currentUser) {
+    if (route === 'forgot-password') {
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+          <ForgotPasswordPage navigate={navigate} />
+        </div>
+      );
+    }
+
+    if (route === 'verify-email') {
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+          <VerifyEmailPage navigate={navigate} />
+        </div>
+      );
+    }
+
+    if (route === 'about') {
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center">
+            <button
+              onClick={() => navigate('login')}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              &larr; Back to Login / Sign Up
+            </button>
+          </div>
+          <AboutPage navigate={navigate} />
+        </div>
+      );
+    }
+
+    if (route === 'privacy') {
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center">
+            <button
+              onClick={() => navigate('login')}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              &larr; Back to Login / Sign Up
+            </button>
+          </div>
+          <PrivacyPage navigate={navigate} />
+        </div>
+      );
+    }
+
+    if (route === 'terms') {
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0f19]">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center">
+            <button
+              onClick={() => navigate('login')}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              &larr; Back to Login / Sign Up
+            </button>
+          </div>
+          <TermsPage navigate={navigate} />
+        </div>
+      );
+    }
+
+    // Default unauthenticated view: Present Login and Sign Up options
+    return (
+      <AuthGatePage
+        navigate={navigate}
+        initialMode={route === 'register' ? 'register' : 'login'}
+        intendedRoute={route !== 'login' && route !== 'register' && route !== 'home' ? route : undefined}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/80 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors selection:bg-blue-600 selection:text-white relative">
@@ -154,7 +272,7 @@ function AppContent() {
           />
         )}
 
-        {route === 'dashboard' && <DashboardPage navigate={navigate} />}
+        {(route === 'dashboard' || route === 'student') && <DashboardPage navigate={navigate} />}
 
         {route === 'my-items' && (
           <MyItemsPage navigate={navigate} initialFilter={routeParams.filter || 'all'} />
@@ -170,7 +288,19 @@ function AppContent() {
 
         {route === 'profile' && <ProfilePage />}
 
-        {route === 'admin' && <AdminDashboard navigate={navigate} />}
+        {route === 'login' && <LoginPage navigate={navigate} />}
+
+        {route === 'register' && <RegisterPage navigate={navigate} />}
+
+        {route === 'forgot-password' && <ForgotPasswordPage navigate={navigate} />}
+
+        {route === 'verify-email' && <VerifyEmailPage navigate={navigate} />}
+
+        {route === 'unauthorized' && <UnauthorizedPage navigate={navigate} />}
+
+        {route === 'admin' && (
+          isAdmin ? <AdminDashboard navigate={navigate} /> : <UnauthorizedPage navigate={navigate} />
+        )}
 
         {route === 'about' && <AboutPage navigate={navigate} />}
 

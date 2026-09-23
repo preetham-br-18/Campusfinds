@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Users can read their own profile; Admins can read all users
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Normal registration: users can only create their own document and MUST have role == 'student'
+      allow create: if isOwner(userId) && request.resource.data.role == 'student';
+
+      // Updates: user can update own profile fields (name, phone, department, year, photoURL)
+      // but CANNOT change their own role or isActive status.
+      // Admin can update any user field including role and status (suspension).
+      allow update: if (
+        isOwner(userId) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.isActive == resource.data.isActive
+      ) || isAdmin();
+
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // Items Collection (Lost & Found)
+    match /items/{itemId} {
+      // Anyone can read active/open items, but soft-deleted items only readable by owner or admin
+      allow read: if resource.data.isDeleted != true || (isAuthenticated() && resource.data.reportedBy == request.auth.uid) || isAdmin();
+
+      // Authenticated users can create items; must set reportedBy to their own UID
+      allow create: if isAuthenticated() && request.resource.data.reportedBy == request.auth.uid;
+
+      // Item reporter can edit their own item; Admins can moderate/edit/delete any item
+      allow update: if (isAuthenticated() && resource.data.reportedBy == request.auth.uid) || isAdmin();
+
+      // Only item reporter or Admin can delete
+      allow delete: if (isAuthenticated() && resource.data.reportedBy == request.auth.uid) || isAdmin();
+    }
+
+    // Claims Collection
+    match /claims/{claimId} {
+      // Claimant, item owner (finder/loser), or Admin can view the claim
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.claimantId ||
+        request.auth.uid == resource.data.ownerId ||
+        isAdmin()
+      );
+
+      // Authenticated user can submit a claim for an item; claimantId must match auth.uid
+      allow create: if isAuthenticated() && request.resource.data.claimantId == request.auth.uid;
+
+      // Item owner (responder) or Admin can update claim status
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.ownerId ||
+        request.auth.uid == resource.data.claimantId ||
+        isAdmin()
+      );
+
+      // Only Admin can delete claims
+      allow delete: if isAdmin();
+    }
+
+    // Reports Collection (Flagging / Moderation)
+    match /reports/{reportId} {
+      // Only Admins can view reports
+      allow read: if isAdmin();
+
+      // Authenticated users can submit a report against an item
+      allow create: if isAuthenticated() && request.resource.data.reporterId == request.auth.uid;
+
+      // Only Admins can review/update or delete reports
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      // User can only read and update their own notifications
+      allow read, update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Settings Collection
+    match /settings/{settingId} {
+      // Publicly readable campus settings (e.g. allowed email domain)
+      allow read: if true;
+      // Only Admins can create, update or delete campus settings
+      allow write: if isAdmin();
+    }
+
+    // Audits / Activity Logs Collection
+    match /audits/{auditId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+  }
+}

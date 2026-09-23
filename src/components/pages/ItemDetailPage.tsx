@@ -169,7 +169,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left: Photos Gallery */}
         <div className="space-y-3">
-          <div className="h-80 sm:h-96 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center relative">
+          <div className="card-stylish h-80 sm:h-96 rounded-2xl overflow-hidden flex items-center justify-center relative">
             {item.imageUrls && item.imageUrls.length > 0 ? (
               <img
                 src={item.imageUrls[activeImageIndex]}
@@ -178,25 +178,38 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                 className="w-full h-full object-contain bg-slate-950/5 dark:bg-slate-950/40"
               />
             ) : (
-              <div className="text-slate-400 flex flex-col items-center">
-                <FileQuestion className="w-16 h-16 stroke-1" />
-                <span className="text-xs font-medium mt-2">No photograph provided</span>
+              <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800/60 dark:to-slate-900/90 text-slate-400 dark:text-slate-500">
+                <div className="w-16 h-16 rounded-2xl bg-white/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-3 shadow-xs">
+                  <FileQuestion className="w-8 h-8 stroke-[1.5]" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{item.category}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs">Photograph withheld for claimant security and private trait verification</span>
               </div>
             )}
 
-            <div className="absolute top-3 left-3 flex space-x-2">
-              <span
-                className={`px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-sm ${
-                  item.type === 'lost' ? 'bg-rose-600' : 'bg-emerald-600'
-                }`}
-              >
-                {item.type}
-              </span>
-              {item.status === 'returned' && (
-                <span className="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-slate-900 text-white shadow-sm">
-                  Returned
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xs text-slate-800 dark:text-slate-200">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    item.status === 'returned'
+                      ? 'bg-slate-400'
+                      : item.status === 'claimed'
+                      ? 'bg-amber-500'
+                      : item.type === 'lost'
+                      ? 'bg-rose-500 animate-pulse'
+                      : 'bg-emerald-500 animate-pulse'
+                  }`}
+                />
+                <span>
+                  {item.status === 'returned'
+                    ? 'Reunited'
+                    : item.status === 'claimed'
+                    ? 'Claim In Progress'
+                    : item.type === 'lost'
+                    ? 'Lost Report'
+                    : 'Found Item'}
                 </span>
-              )}
+              </span>
             </div>
           </div>
 
@@ -209,7 +222,7 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
                   onClick={() => setActiveImageIndex(i)}
                   className={`h-16 w-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
                     activeImageIndex === i
-                      ? 'border-theme-main scale-95'
+                      ? 'border-theme-main scale-95 shadow-xs'
                       : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
@@ -224,17 +237,19 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         <div className="flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                {item.category}
-              </span>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{item.category}</span>
+                <span>·</span>
+                <span>ID: <span className="font-mono">{item.id.slice(0, 8)}</span></span>
+              </div>
+              <div className="flex items-center space-x-1">
                 <button
                   onClick={handleShare}
                   className="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs flex items-center space-x-1"
                   title="Share item link"
                 >
                   <Share2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">{copiedLink ? 'Copied!' : 'Share'}</span>
+                  <span className="hidden sm:inline font-medium">{copiedLink ? 'Copied!' : 'Share'}</span>
                 </button>
                 <button
                   onClick={() => setIsAbuseModalOpen(true)}
@@ -246,38 +261,38 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight leading-tight">
               {item.title}
             </h1>
 
-            <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="grid grid-cols-2 gap-3.5 p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 text-xs">
               <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Campus Location</span>
-                <p className="font-bold text-slate-900 dark:text-white flex items-center space-x-1">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500" />
-                  <span>{item.locationName}</span>
+                <span className="text-slate-400 font-medium">Campus Location</span>
+                <p className="font-semibold text-slate-900 dark:text-white flex items-center space-x-1">
+                  <MapPin className="w-3.5 h-3.5 text-theme-main shrink-0" />
+                  <span className="truncate">{item.locationName}</span>
                 </p>
               </div>
               <div className="space-y-1">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Incident Date</span>
-                <p className="font-bold text-slate-900 dark:text-white flex items-center space-x-1">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-slate-400 font-medium">Incident Date</span>
+                <p className="font-semibold text-slate-900 dark:text-white flex items-center space-x-1 font-mono tabular-nums">
+                  <Calendar className="w-3.5 h-3.5 text-theme-main shrink-0" />
                   <span>{item.dateOfIncident}</span>
                 </p>
               </div>
               {item.timeOfIncident && (
                 <div className="space-y-1">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Approx. Time</span>
-                  <p className="font-bold text-slate-900 dark:text-white flex items-center space-x-1">
-                    <Clock className="w-3.5 h-3.5 text-blue-500" />
+                  <span className="text-slate-400 font-medium">Approx. Time</span>
+                  <p className="font-semibold text-slate-900 dark:text-white flex items-center space-x-1 font-mono tabular-nums">
+                    <Clock className="w-3.5 h-3.5 text-theme-main shrink-0" />
                     <span>{item.timeOfIncident}</span>
                   </p>
                 </div>
               )}
               {item.currentPossession && (
                 <div className="space-y-1">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Current Custody</span>
-                  <p className="font-bold text-slate-900 dark:text-white truncate">
+                  <span className="text-slate-400 font-medium">Current Custody</span>
+                  <p className="font-semibold text-slate-900 dark:text-white truncate">
                     {item.currentPossession}
                   </p>
                 </div>
@@ -285,8 +300,8 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
             </div>
 
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Description
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Description & Distinguishing Features
               </h4>
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                 {item.description}
@@ -294,10 +309,10 @@ export const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
             </div>
 
             {/* Privacy Protection Notice */}
-            <div className="p-3 rounded-xl bg-theme-subtle border border-theme-subtle text-xs text-theme-main flex items-start space-x-2">
+            <div className="p-3.5 rounded-xl bg-theme-subtle/50 border border-theme-subtle text-xs text-theme-main flex items-start space-x-2.5">
               <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-theme-main" />
-              <span>
-                Sensitive identifying details (serial numbers, hidden markings) are kept protected to ensure accurate ownership verification during claims.
+              <span className="leading-relaxed">
+                Sensitive serial identifiers and private compartment markings are kept encrypted to safeguard authentic student ownership during claim verification.
               </span>
             </div>
           </div>

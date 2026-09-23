@@ -6,11 +6,29 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
-  updateProfile as fbUpdateProfile
+  updateProfile as fbUpdateProfile,
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, isOfflineError, OperationType } from './firebase';
 import { UserProfile, UserRole } from '../types';
+
+export interface RegistrationInput {
+  email: string;
+  pass: string;
+  name: string;
+  department: string;
+  year: string;
+  studentId: string;
+  college?: string;
+}
+
+export interface AuthSuccessResult {
+  user: User;
+  role: UserRole;
+  isAdmin: boolean;
+}
 
 interface AuthContextType {
   currentUser: User | null;
@@ -18,78 +36,106 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (data: {
-    email: string;
-    pass: string;
-    name: string;
-    department?: string;
-    year?: string;
-    college?: string;
-    studentId?: string;
-  }) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  quickSignInAsRole: (role: 'admin' | 'student') => Promise<void>;
+  isEmailVerified: boolean;
+  loginWithEmail: (email: string, pass: string) => Promise<AuthSuccessResult>;
+  registerWithEmail: (data: RegistrationInput) => Promise<AuthSuccessResult>;
+  loginWithGoogle: () => Promise<AuthSuccessResult>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshCustomClaims: () => Promise<boolean>;
+  sendVerificationEmail: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  reloadUser: () => Promise<void>;
+  getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Default admin emails (including system user)
-const PRECONFIGURED_ADMIN_EMAILS = [
-  'prajju.m016@gmail.com',
-  'admin@campusfind.edu',
-  'admin@college.edu'
-];
+/**
+ * Translates Firebase Auth error codes into helpful messages.
+ */
+export function formatAuthError(error: any): string {
+  if (!error) return 'An unexpected authentication error occurred.';
+  const code = error.code || '';
+  const message = error.message || '';
+
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+    return 'Invalid email or password. Please check your credentials.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'This college email is already registered. Please sign in or reset your password.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password should be at least 6 characters long.';
+  }
+  if (code === 'auth/invalid-email') {
+    return 'Please provide a valid campus email address format.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Too many failed sign-in attempts. Please wait a few moments and try again.';
+  }
+  if (code === 'auth/user-disabled') {
+    return 'This user account has been suspended by campus administration.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'Firebase Authentication is restricted on this domain. Please ensure this origin is added to Firebase Authorized Domains.';
+  }
+  if (code === 'auth/popup-closed-by-user') {
+    return 'The sign-in popup was closed before completion.';
+  }
+  return message || 'Authentication failed. Please check your network and try again.';
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasAdminClaim, setHasAdminClaim] = useState(false);
 
-  const fetchProfile = async (user: User): Promise<UserProfile | null> => {
-    const cacheKey = `campusfind_user_profile_${user.uid}`;
-    let cachedProfile: UserProfile | null = null;
+  // Strictly inspect Firebase Auth Custom Claims from refreshed ID token
+  const inspectCustomClaims = async (user: User, forceRefresh: boolean = true): Promise<boolean> => {
     try {
-      const stored = localStorage.getItem(cacheKey);
-      if (stored) {
-        cachedProfile = JSON.parse(stored);
+      if (forceRefresh) {
+        await user.getIdToken(true);
       }
-    } catch {
-      // ignore
+      const idTokenResult = await user.getIdTokenResult(forceRefresh);
+      const isAdminByClaim = idTokenResult.claims.admin === true;
+      setHasAdminClaim(isAdminByClaim);
+      return isAdminByClaim;
+    } catch (e) {
+      console.warn('Could not read custom claims from Firebase ID token:', e);
+      setHasAdminClaim(false);
+      return false;
     }
+  };
+
+  const fetchProfile = async (user: User, forceAdmin?: boolean): Promise<UserProfile> => {
+    const userRef = doc(db, 'users', user.uid);
+    const isAdminUser = forceAdmin ?? false;
 
     try {
-      const userRef = doc(db, 'users', user.uid);
       const snapshot = await getDoc(userRef);
       if (snapshot.exists()) {
         const data = snapshot.data() as UserProfile;
-        // Check if user's email is in preconfigured admins to elevate
-        const isAdminEmail = user.email && PRECONFIGURED_ADMIN_EMAILS.includes(user.email.toLowerCase());
-        if (isAdminEmail && data.role === 'student') {
+
+        // If user possesses verified admin custom claim, keep Firestore document role in sync
+        if (isAdminUser && data.role !== 'admin') {
           data.role = 'admin';
           try {
             await updateDoc(userRef, { role: 'admin', updatedAt: new Date().toISOString() });
           } catch {
-            // offline ignore
+            // ignore
           }
-        }
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(data));
-        } catch {
-          // ignore
         }
         return data;
       } else {
-        // First-time profile creation (e.g. from Google login)
-        const isAdminEmail = user.email && PRECONFIGURED_ADMIN_EMAILS.includes(user.email.toLowerCase());
-        const newProfile: UserProfile = cachedProfile || {
+        // Create initial profile if missing
+        const newProfile: UserProfile = {
           uid: user.uid,
           name: user.displayName || user.email?.split('@')[0] || 'Campus User',
           email: user.email || '',
-          role: isAdminEmail ? 'admin' : 'student',
+          role: isAdminUser ? 'admin' : 'student',
           isActive: true,
           photoURL: user.photoURL || '',
           createdAt: new Date().toISOString(),
@@ -98,94 +144,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           await setDoc(userRef, newProfile);
         } catch {
-          // offline ignore
-        }
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(newProfile));
-        } catch {
           // ignore
         }
         return newProfile;
       }
     } catch (error) {
-      const isOffline = isOfflineError(error);
-      if (isOffline) {
-        console.warn('Firestore is currently offline. Operating in reliable local-storage mode for user profile.');
-      } else {
-        console.warn('Notice when fetching user profile, using local fallback:', error);
+      if (!isOfflineError(error)) {
+        console.warn('Could not fetch user document from Firestore:', error);
       }
 
-      if (cachedProfile) {
-        return cachedProfile;
-      }
-
-      // Fallback profile
-      const isAdminEmail = user.email && PRECONFIGURED_ADMIN_EMAILS.includes(user.email.toLowerCase());
-      const fallbackProfile: UserProfile = {
+      // Offline / fallback profile
+      return {
         uid: user.uid,
         name: user.displayName || user.email?.split('@')[0] || 'Campus User',
         email: user.email || '',
-        role: isAdminEmail ? 'admin' : 'student',
+        role: isAdminUser ? 'admin' : 'student',
         isActive: true,
         photoURL: user.photoURL || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(fallbackProfile));
-      } catch {
-        // ignore
-      }
-      return fallbackProfile;
     }
   };
 
   useEffect(() => {
-    // Check if there was a local cached auth user
-    let restoredSession = false;
-    try {
-      const storedAuth = localStorage.getItem('campusfind_cached_auth_user');
-      if (storedAuth) {
-        const parsed = JSON.parse(storedAuth);
-        if (parsed && parsed.uid) {
-          const synthUser: User = {
-            uid: parsed.uid,
-            email: parsed.email,
-            displayName: parsed.displayName,
-            photoURL: parsed.photoURL,
-            emailVerified: true,
-            isAnonymous: false,
-            metadata: {},
-            providerData: [],
-            refreshToken: '',
-            tenantId: null,
-            delete: async () => {},
-            getIdToken: async () => 'mock-token',
-            getIdTokenResult: async () => ({} as any),
-            reload: async () => {},
-            toJSON: () => ({})
-          } as unknown as User;
-          setCurrentUser(synthUser);
-          restoredSession = true;
-          fetchProfile(synthUser).then(p => {
-            setProfile(p);
-            setLoading(false);
-          });
-        }
-      }
-    } catch {}
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setCurrentUser(user);
-        const userProf = await fetchProfile(user);
-        setProfile(userProf);
-        setLoading(false);
-      } else if (!restoredSession) {
+        try {
+          // Requirement 4 & 11: Force refresh Firebase ID token using await user.getIdToken(true)
+          await user.getIdToken(true);
+          const idTokenResult = await user.getIdTokenResult(true);
+          const isAdminByClaim = idTokenResult.claims.admin === true;
+          setHasAdminClaim(isAdminByClaim);
+          setCurrentUser(user);
+
+          const userProf = await fetchProfile(user, isAdminByClaim);
+          setProfile(userProf);
+        } catch (err) {
+          console.warn('Error verifying token claims on auth state change:', err);
+          setCurrentUser(user);
+          setHasAdminClaim(false);
+        } finally {
+          setLoading(false);
+        }
+      } else {
         setCurrentUser(null);
         setProfile(null);
-        setLoading(false);
-      } else {
+        setHasAdminClaim(false);
         setLoading(false);
       }
     });
@@ -193,331 +198,167 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const loginWithEmail = async (email: string, pass: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), pass);
-    } catch (err: any) {
-      const isDomainOrNetwork =
-        isOfflineError(err) ||
-        err?.code === 'auth/unauthorized-domain' ||
-        err?.code === 'auth/network-request-failed';
+  const loginWithEmail = async (email: string, pass: string): Promise<AuthSuccessResult> => {
+    // 1. Firebase Authentication verifies the user normally
+    const userCredential = await signInWithEmailAndPassword(auth, email.trim(), pass);
+    const user = userCredential.user;
 
-      if (isDomainOrNetwork) {
-        console.warn('Network or unauthorized domain detected during email sign-in. Establishing local campus session.');
-        const userEmail = email.trim();
-        const userUid = 'local_user_' + btoa(userEmail).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
-        const isAdmin = PRECONFIGURED_ADMIN_EMAILS.includes(userEmail.toLowerCase());
-        const synthUser: User = {
-          uid: userUid,
-          email: userEmail,
-          displayName: userEmail.split('@')[0],
-          photoURL: '',
-          emailVerified: true,
-          isAnonymous: false,
-          metadata: {},
-          providerData: [],
-          refreshToken: '',
-          tenantId: null,
-          delete: async () => {},
-          getIdToken: async () => 'mock-token',
-          getIdTokenResult: async () => ({} as any),
-          reload: async () => {},
-          toJSON: () => ({})
-        } as unknown as User;
+    // 2. Requirement 4 & 11: Force refresh the Firebase ID token using: await user.getIdToken(true)
+    await user.getIdToken(true);
 
-        setCurrentUser(synthUser);
-        try {
-          localStorage.setItem('campusfind_cached_auth_user', JSON.stringify({
-            uid: synthUser.uid,
-            email: synthUser.email,
-            displayName: synthUser.displayName,
-            photoURL: ''
-          }));
-        } catch {}
-        const p = await fetchProfile(synthUser);
-        setProfile(p);
-        return;
-      }
-      throw err;
-    }
+    // 3. Read the ID token result / custom claims
+    const idTokenResult = await user.getIdTokenResult(true);
+
+    // 4. Check admin custom claim strictly: if claims.admin === true
+    const isAdminByClaim = idTokenResult.claims.admin === true;
+    setHasAdminClaim(isAdminByClaim);
+    setCurrentUser(user);
+
+    const userProfile = await fetchProfile(user, isAdminByClaim);
+    setProfile(userProfile);
+
+    return {
+      user,
+      role: isAdminByClaim ? 'admin' : (userProfile?.role || 'student'),
+      isAdmin: isAdminByClaim
+    };
   };
 
-  const registerWithEmail = async (data: {
-    email: string;
-    pass: string;
-    name: string;
-    department?: string;
-    year?: string;
-    college?: string;
-    studentId?: string;
-  }) => {
-    // Check college domain restrictions if set in settings
+  /**
+   * Registers a new student account:
+   * - Sets displayName
+   * - Enforces role: "student" strictly (user cannot choose role)
+   * - Creates Firestore document users/{uid}
+   * - Sends email verification
+   */
+  const registerWithEmail = async (data: RegistrationInput): Promise<AuthSuccessResult> => {
+    // 1. Create Firebase Auth account
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.pass);
+    const user = userCredential.user;
+
+    // 2. Set Firebase Auth display name
+    await fbUpdateProfile(user, { displayName: data.name.trim() });
+
+    // 3. Send email verification
     try {
-      const settingsDoc = await getDoc(doc(db, 'settings', 'global'));
-      if (settingsDoc.exists()) {
-        const settings = settingsDoc.data();
-        if (settings.allowedDomain && settings.allowedDomain.trim() !== '') {
-          const requiredDomain = settings.allowedDomain.trim().toLowerCase().replace(/^@/, '');
-          const userDomain = data.email.split('@')[1]?.toLowerCase();
-          if (userDomain !== requiredDomain) {
-            throw new Error(`Only email addresses ending with @${requiredDomain} are allowed to register for this campus.`);
-          }
-        }
-      }
+      await sendEmailVerification(user);
     } catch (e) {
-      if (e instanceof Error && e.message.includes('allowed to register')) {
-        throw e;
-      }
-      // Continue if settings not found or offline
+      console.warn('Could not send initial verification email:', e);
     }
 
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, data.email.trim(), data.pass);
-      await fbUpdateProfile(cred.user, { displayName: data.name });
-
-      const isAdminEmail = PRECONFIGURED_ADMIN_EMAILS.includes(data.email.toLowerCase());
-      const newProfile: UserProfile = {
-        uid: cred.user.uid,
-        name: data.name,
-        email: data.email.trim(),
-        role: isAdminEmail ? 'admin' : 'student',
-        department: data.department || '',
-        year: data.year || '',
-        college: data.college || 'Campus University',
-        studentId: data.studentId || '',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      const cacheKey = `campusfind_user_profile_${cred.user.uid}`;
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(newProfile));
-      } catch {}
-      setProfile(newProfile);
-
-      try {
-        await setDoc(doc(db, 'users', cred.user.uid), newProfile);
-      } catch (err) {
-        if (!isOfflineError(err)) {
-          handleFirestoreError(err, OperationType.CREATE, `users/${cred.user.uid}`);
-        }
-      }
-    } catch (err: any) {
-      const isDomainOrNetwork =
-        isOfflineError(err) ||
-        err?.code === 'auth/unauthorized-domain' ||
-        err?.code === 'auth/network-request-failed';
-
-      if (isDomainOrNetwork) {
-        console.warn('Network or unauthorized domain detected during registration. Establishing local campus profile.');
-        const userEmail = data.email.trim();
-        const userUid = 'local_user_' + btoa(userEmail).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
-        const isAdminEmail = PRECONFIGURED_ADMIN_EMAILS.includes(userEmail.toLowerCase());
-
-        const synthUser: User = {
-          uid: userUid,
-          email: userEmail,
-          displayName: data.name,
-          photoURL: '',
-          emailVerified: true,
-          isAnonymous: false,
-          metadata: {},
-          providerData: [],
-          refreshToken: '',
-          tenantId: null,
-          delete: async () => {},
-          getIdToken: async () => 'mock-token',
-          getIdTokenResult: async () => ({} as any),
-          reload: async () => {},
-          toJSON: () => ({})
-        } as unknown as User;
-
-        const newProfile: UserProfile = {
-          uid: userUid,
-          name: data.name,
-          email: userEmail,
-          role: isAdminEmail ? 'admin' : 'student',
-          department: data.department || '',
-          year: data.year || '',
-          college: data.college || 'Campus University',
-          studentId: data.studentId || '',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-
-        setCurrentUser(synthUser);
-        setProfile(newProfile);
-        try {
-          localStorage.setItem('campusfind_cached_auth_user', JSON.stringify({
-            uid: synthUser.uid,
-            email: synthUser.email,
-            displayName: synthUser.displayName,
-            photoURL: ''
-          }));
-          localStorage.setItem(`campusfind_user_profile_${userUid}`, JSON.stringify(newProfile));
-        } catch {}
-        return;
-      }
-      throw err;
-    }
-  };
-
-  const loginWithGoogle = async () => {
-    try {
-      const res = await signInWithPopup(auth, googleProvider);
-      if (res.user) {
-        const p = await fetchProfile(res.user);
-        setProfile(p);
-      }
-    } catch (err: any) {
-      const isUnauthorizedDomain =
-        err?.code === 'auth/unauthorized-domain' ||
-        err?.message?.includes('unauthorized-domain') ||
-        err?.message?.includes('auth/unauthorized-domain');
-
-      if (isUnauthorizedDomain) {
-        console.warn(
-          'Firebase Auth unauthorized-domain detected for this container URL. Providing automatic authenticated campus session for Google account.'
-        );
-        const userEmail = 'prajju.m016@gmail.com';
-        const userUid = 'google_user_' + btoa(userEmail).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
-
-        const fallbackUser: User = {
-          uid: userUid,
-          email: userEmail,
-          displayName: 'Preetham (Prajju)',
-          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-          emailVerified: true,
-          isAnonymous: false,
-          metadata: {},
-          providerData: [{
-            providerId: 'google.com',
-            uid: userUid,
-            displayName: 'Preetham (Prajju)',
-            email: userEmail,
-            phoneNumber: null,
-            photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
-          }],
-          refreshToken: '',
-          tenantId: null,
-          delete: async () => {},
-          getIdToken: async () => 'mock-token',
-          getIdTokenResult: async () => ({} as any),
-          reload: async () => {},
-          toJSON: () => ({})
-        } as unknown as User;
-
-        setCurrentUser(fallbackUser);
-        try {
-          localStorage.setItem('campusfind_cached_auth_user', JSON.stringify({
-            uid: fallbackUser.uid,
-            email: fallbackUser.email,
-            displayName: fallbackUser.displayName,
-            photoURL: fallbackUser.photoURL
-          }));
-        } catch {}
-
-        const profileData = await fetchProfile(fallbackUser);
-        setProfile(profileData);
-        return;
-      }
-      throw err;
-    }
-  };
-
-  const quickSignInAsRole = async (role: 'admin' | 'student') => {
-    const isTargetAdmin = role === 'admin';
-    const email = isTargetAdmin ? 'prajju.m016@gmail.com' : 'ananya.s@campus.edu';
-    const name = isTargetAdmin ? 'Preetham (Campus Admin)' : 'Ananya Sharma';
-    const userUid = isTargetAdmin ? 'admin-prajju' : 'student-ananya';
-    const photoURL = isTargetAdmin
-      ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
-      : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80';
-
-    const synthUser: User = {
-      uid: userUid,
-      email,
-      displayName: name,
-      photoURL,
-      emailVerified: true,
-      isAnonymous: false,
-      metadata: {},
-      providerData: [],
-      refreshToken: '',
-      tenantId: null,
-      delete: async () => {},
-      getIdToken: async () => 'mock-token',
-      getIdTokenResult: async () => ({} as any),
-      reload: async () => {},
-      toJSON: () => ({})
-    } as unknown as User;
-
-    setCurrentUser(synthUser);
-    try {
-      localStorage.setItem('campusfind_cached_auth_user', JSON.stringify({
-        uid: synthUser.uid,
-        email: synthUser.email,
-        displayName: synthUser.displayName,
-        photoURL: synthUser.photoURL
-      }));
-    } catch {}
-
-    const profileData: UserProfile = {
-      uid: userUid,
-      name,
-      email,
-      role: isTargetAdmin ? 'superadmin' : 'student',
-      department: isTargetAdmin ? 'Administration & IT' : 'Electrical Engineering',
-      year: isTargetAdmin ? 'Faculty' : '3rd Year',
-      college: 'Campus University',
-      studentId: isTargetAdmin ? 'FAC-ADMIN-01' : 'EE2023-045',
+    // 4. Create Firestore user document users/{uid}
+    // Strict requirement: role must be 'student'
+    const newProfile: UserProfile = {
+      uid: user.uid,
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      department: data.department.trim(),
+      year: data.year.trim(),
+      studentId: data.studentId.trim(),
+      college: data.college?.trim() || 'Campus University',
+      role: 'student', // Strict enforcement: normal registrations are always student
       isActive: true,
-      photoURL,
+      photoURL: user.photoURL || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    try {
-      localStorage.setItem(`campusfind_user_profile_${userUid}`, JSON.stringify(profileData));
-    } catch {}
+    const userDocRef = doc(db, 'users', user.uid);
+    await setDoc(userDocRef, newProfile);
 
-    setProfile(profileData);
+    setCurrentUser(user);
+    setProfile(newProfile);
+    setHasAdminClaim(false);
+
+    return {
+      user,
+      role: 'student',
+      isAdmin: false
+    };
+  };
+
+  const loginWithGoogle = async (): Promise<AuthSuccessResult> => {
+    const res = await signInWithPopup(auth, googleProvider);
+    const user = res.user;
+
+    // Force refresh the Firebase ID token using: await user.getIdToken(true)
+    await user.getIdToken(true);
+    const idTokenResult = await user.getIdTokenResult(true);
+
+    const isAdminByClaim = idTokenResult.claims.admin === true;
+    setHasAdminClaim(isAdminByClaim);
+    setCurrentUser(user);
+
+    const p = await fetchProfile(user, isAdminByClaim);
+    setProfile(p);
+
+    return {
+      user,
+      role: isAdminByClaim ? 'admin' : (p?.role || 'student'),
+      isAdmin: isAdminByClaim
+    };
   };
 
   const logout = async () => {
-    try {
-      localStorage.removeItem('campusfind_cached_auth_user');
-    } catch {}
-    try {
-      await fbSignOut(auth);
-    } catch {}
+    await fbSignOut(auth);
     setCurrentUser(null);
     setProfile(null);
+    setHasAdminClaim(false);
   };
 
+  /**
+   * Refreshes the active user's ID token and re-evaluates custom claims.
+   * Ensures newly assigned claims take effect without waiting for token expiration.
+   */
+  const refreshCustomClaims = async (): Promise<boolean> => {
+    const user = auth.currentUser || currentUser;
+    if (!user) {
+      setHasAdminClaim(false);
+      return false;
+    }
+    try {
+      await user.getIdToken(true);
+      const idTokenResult = await user.getIdTokenResult(true);
+      const isAdminByClaim = idTokenResult.claims.admin === true;
+      setHasAdminClaim(isAdminByClaim);
+      if (profile) {
+        setProfile({
+          ...profile,
+          role: isAdminByClaim ? 'admin' : profile.role
+        });
+      }
+      return isAdminByClaim;
+    } catch (e) {
+      console.warn('Failed to refresh custom claims from ID token:', e);
+      return false;
+    }
+  };
+
+  /**
+   * Updates student profile fields (name, department, year, phone, etc.).
+   * Strict requirement: role, uid, email, and isActive are sanitized away
+   * so client updates cannot elevate roles.
+   */
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     if (!currentUser) return;
-    const cacheKey = `campusfind_user_profile_${currentUser.uid}`;
+
+    // Sanitize updates to prevent client role elevation
+    const safeUpdates: Record<string, any> = { ...updates };
+    delete safeUpdates.role;
+    delete safeUpdates.uid;
+    delete safeUpdates.email;
+    delete safeUpdates.isActive;
+    safeUpdates.updatedAt = new Date().toISOString();
+
     const userRef = doc(db, 'users', currentUser.uid);
-    const updated = {
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
 
     setProfile(prev => {
-      const next = prev ? { ...prev, ...updated } : ({ uid: currentUser.uid, ...updated } as UserProfile);
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(next));
-      } catch {
-        // ignore
-      }
-      return next;
+      if (!prev) return null;
+      return { ...prev, ...safeUpdates };
     });
 
     try {
-      await updateDoc(userRef, updated);
+      await updateDoc(userRef, safeUpdates);
     } catch (err) {
       if (!isOfflineError(err)) {
         handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
@@ -527,13 +368,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = async () => {
     if (currentUser) {
-      const p = await fetchProfile(currentUser);
+      const isAdminUser = await inspectCustomClaims(currentUser, true);
+      const p = await fetchProfile(currentUser, isAdminUser);
       setProfile(p);
     }
   };
 
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
-  const isSuperAdmin = profile?.role === 'superadmin';
+  const sendVerificationEmail = async () => {
+    if (currentUser) {
+      await sendEmailVerification(currentUser);
+    } else {
+      throw new Error('No user is currently signed in.');
+    }
+  };
+
+  const sendPasswordReset = async (email: string) => {
+    await sendPasswordResetEmail(auth, email.trim());
+  };
+
+  const reloadUser = async () => {
+    if (auth.currentUser) {
+      await auth.currentUser.reload();
+      setCurrentUser(auth.currentUser);
+      await refreshCustomClaims();
+      await refreshProfile();
+    }
+  };
+
+  const getIdToken = async (forceRefresh: boolean = false): Promise<string | null> => {
+    const user = auth.currentUser || currentUser;
+    if (!user) return null;
+    if (typeof user.getIdToken === 'function') {
+      return await user.getIdToken(forceRefresh);
+    }
+    if (auth.currentUser && typeof auth.currentUser.getIdToken === 'function') {
+      return await auth.currentUser.getIdToken(forceRefresh);
+    }
+    return null;
+  };
+
+  const isEmailVerified = Boolean(currentUser?.emailVerified);
+  // Authorization is strictly derived from the verified Firebase custom claim in the token
+  const isAdmin = hasAdminClaim;
+  const isSuperAdmin = hasAdminClaim && profile?.role === 'superadmin';
 
   return (
     <AuthContext.Provider
@@ -543,13 +420,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         isAdmin,
         isSuperAdmin,
+        isEmailVerified,
         loginWithEmail,
         registerWithEmail,
         loginWithGoogle,
-        quickSignInAsRole,
         logout,
         updateUserProfile,
-        refreshProfile
+        refreshProfile,
+        refreshCustomClaims,
+        sendVerificationEmail,
+        sendPasswordReset,
+        reloadUser,
+        getIdToken
       }}
     >
       {children}

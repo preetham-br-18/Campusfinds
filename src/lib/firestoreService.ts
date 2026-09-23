@@ -785,8 +785,19 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   // Seed default admin and sample users into local storage if not present
   const defaultSampleUsers: UserProfile[] = [
     {
-      uid: 'admin-prajju',
+      uid: 'admin-preetham',
       name: 'Preetham (Campus Admin)',
+      email: 'preethamirl@gmail.com',
+      role: 'admin',
+      department: 'Administration',
+      college: 'Campus University',
+      isActive: true,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 200).toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      uid: 'admin-prajju',
+      name: 'Preetham M (Campus Super Admin)',
       email: 'prajju.m016@gmail.com',
       role: 'superadmin',
       department: 'Computer Science',

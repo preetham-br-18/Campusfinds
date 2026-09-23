@@ -48,20 +48,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Brand Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNav('home')}>
-            <div className="w-10 h-10 rounded-xl gradient-theme-bg text-white flex items-center justify-center shadow-md font-bold text-lg tracking-wider">
+          {/* Brand Logo - Top Bar Contract: Single text wordmark */}
+          <button
+            onClick={() => handleNav('home')}
+            className="flex items-center gap-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-main rounded-lg group"
+          >
+            <span className="w-8 h-8 rounded-lg gradient-theme-bg text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm group-hover:scale-105 transition-transform duration-200">
               CF
-            </div>
-            <div>
-              <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white font-display">
-                {APP_NAME}
-              </span>
-              <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                {APP_TAGLINE}
-              </p>
-            </div>
-          </div>
+            </span>
+            <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white font-display">
+              {APP_NAME}
+            </span>
+          </button>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
@@ -102,31 +100,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Report Found
             </button>
-            {currentUser && (
+            {currentUser && !isAdmin && (
               <button
                 id="nav-dashboard-btn"
-                onClick={() => handleNav('dashboard')}
+                onClick={() => handleNav('student')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                  activeRoute === 'dashboard'
+                  activeRoute === 'student' || activeRoute === 'dashboard'
                     ? 'text-theme-main bg-theme-subtle font-semibold shadow-xs'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                Dashboard
+                Student Portal
               </button>
             )}
             {isAdmin && (
               <button
                 id="nav-admin-btn"
                 onClick={() => handleNav('admin')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center space-x-1 ${
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center space-x-1.5 ${
                   activeRoute === 'admin'
-                    ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40'
+                    ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 font-semibold shadow-xs'
                     : 'text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30'
                 }`}
               >
                 <Shield className="w-3.5 h-3.5" />
-                <span>Admin</span>
+                <span>Admin Console</span>
               </button>
             )}
           </nav>
@@ -193,13 +191,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => handleNav('dashboard')}
-                      className="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2"
-                    >
-                      <Layers className="w-4 h-4" />
-                      <span>My Dashboard</span>
-                    </button>
+                    {!isAdmin && (
+                      <button
+                        onClick={() => handleNav('student')}
+                        className="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2"
+                      >
+                        <Layers className="w-4 h-4" />
+                        <span>Student Portal</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleNav('my-items')}
                       className="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center space-x-2"
@@ -247,13 +247,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             ) : (
-              <button
-                id="nav-signin-btn"
-                onClick={openAuthModal}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl gradient-theme-bg hover:opacity-90 text-white shadow-sm transition-all"
-              >
-                Sign In
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  id="nav-signin-btn"
+                  onClick={() => handleNav('login')}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  Sign In
+                </button>
+                <button
+                  id="nav-register-btn"
+                  onClick={() => handleNav('register')}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-xl gradient-theme-bg hover:opacity-90 text-white shadow-xs transition-all"
+                >
+                  Register
+                </button>
+              </div>
             )}
 
             {/* Mobile menu toggle */}
@@ -332,6 +341,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             About CampusFind
           </button>
+
+          {!currentUser && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              <button
+                onClick={() => handleNav('login')}
+                className="w-full text-center py-2 px-3 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => handleNav('register')}
+                className="w-full text-center py-2 px-3 rounded-lg text-sm font-semibold text-white gradient-theme-bg"
+              >
+                Create Student Account
+              </button>
+            </div>
+          )}
         </div>
       )}
     </header>

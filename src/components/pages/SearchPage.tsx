@@ -429,11 +429,11 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             <div
               key={item.id}
               onClick={() => navigate('item-detail', { id: item.id })}
-              className="group cursor-pointer rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-md transition-all flex flex-col justify-between"
+              className="card-stylish group cursor-pointer rounded-2xl overflow-hidden flex flex-col justify-between"
             >
               <div>
-                {/* Image container */}
-                <div className="h-48 bg-slate-100 dark:bg-slate-800 relative overflow-hidden flex items-center justify-center">
+                {/* Image container or styled SVG mesh */}
+                <div className="h-48 bg-slate-100 dark:bg-slate-800/80 relative overflow-hidden flex items-center justify-center">
                   {item.imageUrls && item.imageUrls.length > 0 ? (
                     <img
                       src={item.imageUrls[0]}
@@ -442,43 +442,57 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="text-slate-400 flex flex-col items-center">
-                      <FileQuestion className="w-10 h-10 stroke-1" />
-                      <span className="text-[11px] mt-1 font-medium">No photograph attached</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800/70 dark:to-slate-900/90 text-slate-400 dark:text-slate-500">
+                      <div className="w-12 h-12 rounded-xl bg-white/70 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-2 shadow-xs group-hover:scale-110 transition-transform">
+                        <FileQuestion className="w-6 h-6 stroke-[1.5]" />
+                      </div>
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{item.category}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Verification by Description</span>
                     </div>
                   )}
 
-                  {/* Top Badges */}
-                  <div className="absolute top-3 left-3 flex space-x-1.5">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-sm ${
-                        item.type === 'lost' ? 'bg-rose-600' : 'bg-emerald-600'
-                      }`}
-                    >
-                      {item.type}
+                  {/* Clean discreet status pill with subtle backdrop */}
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xs text-slate-800 dark:text-slate-200">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          item.status === 'returned'
+                            ? 'bg-slate-400'
+                            : item.status === 'claimed'
+                            ? 'bg-amber-500'
+                            : item.type === 'lost'
+                            ? 'bg-rose-500 animate-pulse'
+                            : 'bg-emerald-500 animate-pulse'
+                        }`}
+                      />
+                      <span>
+                        {item.status === 'returned'
+                          ? 'Reunited'
+                          : item.status === 'claimed'
+                          ? 'Claim In Progress'
+                          : item.type === 'lost'
+                          ? 'Lost'
+                          : 'Found'}
+                      </span>
                     </span>
-                    {item.status === 'returned' && (
-                      <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-900 text-white shadow-sm">
-                        Returned
-                      </span>
-                    )}
-                    {item.status === 'claimed' && (
-                      <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
-                        Claimed
-                      </span>
-                    )}
                   </div>
 
                   <div className="absolute top-3 right-3">
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 backdrop-blur-sm shadow-xs">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-black/40 text-white backdrop-blur-md">
                       {item.category}
                     </span>
                   </div>
                 </div>
 
-                {/* Info */}
+                {/* Info with unboxed metadata */}
                 <div className="p-4">
-                  <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-theme-main transition-colors">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{item.category}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="truncate">{item.locationName}</span>
+                  </div>
+
+                  <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-theme-main transition-colors leading-snug">
                     {item.title}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
@@ -488,12 +502,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               </div>
 
               {/* Meta footer */}
-              <div className="p-4 pt-0 border-t border-slate-100 dark:border-slate-800/80 mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                <div className="flex items-center space-x-1 truncate max-w-[60%]">
+              <div className="p-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center space-x-1 truncate max-w-[65%]">
                   <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                   <span className="truncate">{item.locationName}</span>
                 </div>
-                <div className="flex items-center space-x-1 shrink-0">
+                <div className="flex items-center space-x-1 shrink-0 font-mono tabular-nums">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   <span>{item.dateOfIncident}</span>
                 </div>

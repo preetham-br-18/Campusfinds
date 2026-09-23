@@ -17,7 +17,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   openAuthModal,
   openReportModal
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
 
   return (
     <nav
@@ -107,24 +107,27 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           </div>
         </button>
 
-        {/* Profile / Account */}
+        {/* Profile / Student / Admin */}
         <button
           id="mobile-nav-profile"
           onClick={() => {
-            if (!currentUser) openAuthModal();
-            else navigate('profile');
+            if (!currentUser) navigate('login');
+            else if (isAdmin) navigate('admin');
+            else navigate('student');
           }}
           className={`flex flex-col items-center justify-center flex-1 h-full min-h-[48px] px-1 transition-all active:scale-95 touch-manipulation ${
-            activeRoute === 'profile' || activeRoute === 'dashboard'
+            activeRoute === 'profile' || activeRoute === 'student' || activeRoute === 'dashboard' || activeRoute === 'admin'
               ? 'text-theme-main font-bold'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
-          aria-label={currentUser ? 'User profile' : 'Sign in'}
+          aria-label={currentUser ? (isAdmin ? 'Admin Console' : 'Student Portal') : 'Sign in'}
         >
           <div className="relative flex flex-col items-center">
-            <User className={`w-5 h-5 transition-transform ${activeRoute === 'profile' || activeRoute === 'dashboard' ? 'scale-110' : ''}`} />
-            <span className="text-[11px] font-medium tracking-tight mt-0.5">{currentUser ? 'Account' : 'Sign In'}</span>
-            {(activeRoute === 'profile' || activeRoute === 'dashboard') && (
+            <User className={`w-5 h-5 transition-transform ${activeRoute === 'profile' || activeRoute === 'student' || activeRoute === 'dashboard' || activeRoute === 'admin' ? 'scale-110' : ''}`} />
+            <span className="text-[11px] font-medium tracking-tight mt-0.5">
+              {currentUser ? (isAdmin ? 'Admin' : 'Student') : 'Sign In'}
+            </span>
+            {(activeRoute === 'profile' || activeRoute === 'student' || activeRoute === 'dashboard' || activeRoute === 'admin') && (
               <span className="w-1.5 h-1.5 rounded-full bg-theme-main mt-0.5" />
             )}
           </div>

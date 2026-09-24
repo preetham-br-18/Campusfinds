@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth, formatAuthError } from '../../lib/authContext';
 import { useTheme } from '../../lib/themeContext';
+import { CAMPUS_DEPARTMENTS } from '../../lib/constants';
 
 interface AuthGatePageProps {
   navigate: (route: string, params?: Record<string, any>) => void;
@@ -29,19 +30,7 @@ interface AuthGatePageProps {
   intendedRoute?: string;
 }
 
-const DEPARTMENTS = [
-  'Computer Science & Engineering',
-  'Information Technology',
-  'Electronics & Communication',
-  'Electrical Engineering',
-  'Mechanical Engineering',
-  'Civil Engineering',
-  'Business Administration (MBA / BBA)',
-  'Physics & Mathematics',
-  'Architecture & Design',
-  'Life Sciences & Biotechnology',
-  'Other Campus Department'
-];
+const DEPARTMENTS = CAMPUS_DEPARTMENTS;
 
 const YEARS = [
   '1st Year (Freshman)',

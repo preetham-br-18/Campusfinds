@@ -114,12 +114,44 @@ async function authenticateRequest(req: express.Request): Promise<{ uid: string;
   try {
     const auth = getAdminAuth();
     const decoded = await auth.verifyIdToken(idToken);
+    const email = decoded.email ? decoded.email.toLowerCase() : undefined;
+    let isAdmin = decoded.admin === true;
+
+    // Check verified administrative emails or admin role
+    const ADMIN_EMAILS = [
+      'prajju.m016@gmail.com',
+      'preethamirl@gmail.com',
+      'admin@saividya.ac.in',
+      'preethambr.24aiml@saividya.ac.in',
+      'security@saividya.ac.in',
+      'principal@saividya.ac.in'
+    ];
+
+    if (!isAdmin && email && ADMIN_EMAILS.includes(email)) {
+      isAdmin = true;
+    }
+
+    if (!isAdmin) {
+      try {
+        const db = getAdminFirestore();
+        const userDoc = await db.collection("users").doc(decoded.uid).get();
+        if (userDoc.exists) {
+          const docData = userDoc.data();
+          if (docData?.role === 'admin' || docData?.role === 'superadmin' || docData?.role === 'security') {
+            isAdmin = true;
+          }
+        }
+      } catch (e) {
+        // continue
+      }
+    }
+
     return {
       uid: decoded.uid,
       email: decoded.email,
       emailVerified: decoded.email_verified === true,
       name: (decoded as any).name || (decoded as any).display_name,
-      admin: decoded.admin === true
+      admin: isAdmin
     };
   } catch (err) {
     console.warn("Auth token verification error in server API:", err);
@@ -210,10 +242,16 @@ app.post("/api/reports/submit", async (req, res) => {
   try {
     const db = getAdminFirestore();
 
-    // 5. Check if user has active temporary reporting restriction
+    // 5. Check if user is suspended or has active temporary reporting restriction
     const userRef = db.collection("users").doc(user.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data() || {};
+
+    if (userData.isActive === false) {
+      return res.status(403).json({
+        error: "Your account is currently suspended. Please contact the CampusFind administrator."
+      });
+    }
 
     if (userData.reportingRestricted === true) {
       const restrictionUntil = userData.restrictionUntil ? new Date(userData.restrictionUntil) : null;
@@ -517,7 +555,55 @@ app.post("/api/admin/reports/moderate", async (req, res) => {
 });
 
 /* ==================================================
-   3. ADMIN USER TEMPORARY RESTRICTION API
+   3a. ADMIN USER SUSPENSION / REACTIVATION API
+   ================================================== */
+app.post("/api/admin/users/status", async (req, res) => {
+  const user = await authenticateRequest(req);
+  if (!user || !user.admin) {
+    return res.status(403).json({ error: "Forbidden. Admin privileges required." });
+  }
+
+  const { userId, isActive } = req.body || {};
+  if (!userId || typeof isActive !== "boolean") {
+    return res.status(400).json({ error: "Missing target userId or boolean isActive state." });
+  }
+
+  try {
+    const db = getAdminFirestore();
+    const userRef = db.collection("users").doc(userId);
+    const now = new Date().toISOString();
+
+    await userRef.set(
+      {
+        isActive: Boolean(isActive),
+        updatedAt: now
+      },
+      { merge: true }
+    );
+
+    // Audit log
+    await db.collection("adminAuditLogs").add({
+      reportId: `user_${userId}`,
+      reportTitle: `User Account Access (${isActive ? 'Active' : 'Suspended'})`,
+      adminUid: user.uid,
+      adminEmail: user.email || 'admin',
+      action: isActive ? 'reactivate_user' : 'suspend_user',
+      timestamp: now
+    });
+
+    return res.json({
+      success: true,
+      userId,
+      isActive: Boolean(isActive)
+    });
+  } catch (err: any) {
+    console.error("Error toggling user suspension status:", err);
+    return res.status(500).json({ error: err.message || "Failed to update user status." });
+  }
+});
+
+/* ==================================================
+   3b. ADMIN USER TEMPORARY RESTRICTION API
    ================================================== */
 app.post("/api/admin/users/restrict", async (req, res) => {
   const user = await authenticateRequest(req);
@@ -566,6 +652,92 @@ app.post("/api/admin/users/restrict", async (req, res) => {
   } catch (err: any) {
     console.error("Error restricting user:", err);
     return res.status(500).json({ error: "Failed to update user restriction." });
+  }
+});
+
+/* ==================================================
+   3b. ADMIN USERS LIST API
+   ================================================== */
+app.get("/api/admin/users", async (req, res) => {
+  const user = await authenticateRequest(req);
+  if (!user || !user.admin) {
+    return res.status(403).json({ error: "Forbidden. Admin privileges required." });
+  }
+
+  try {
+    const db = getAdminFirestore();
+    const snapshot = await db.collection("users").get();
+    const users: any[] = [];
+    snapshot.forEach((docSnap) => {
+      users.push({ uid: docSnap.id, ...docSnap.data() });
+    });
+    return res.json({ success: true, users });
+  } catch (err: any) {
+    console.error("Error retrieving users for admin:", err);
+    return res.status(500).json({ error: err.message || "Failed to retrieve users." });
+  }
+});
+
+/* ==================================================
+   3c. ITEMS FETCH APIS (RESILIENT BACKEND PROXY)
+   ================================================== */
+app.get("/api/items", async (req, res) => {
+  try {
+    const user = await authenticateRequest(req);
+    const db = getAdminFirestore();
+    const snapshot = await db.collection("items").get();
+    const items: any[] = [];
+    const isAdminUser = Boolean(user?.admin);
+    const userId = user?.uid;
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const item = { id: docSnap.id, ...data };
+      if (isAdminUser) {
+        items.push(item);
+      } else if (!data.isDeleted) {
+        if (data.status === 'approved' || data.status === 'resolved' || data.status === 'open' || (userId && data.reportedBy === userId)) {
+          items.push(item);
+        }
+      }
+    });
+
+    items.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return res.json({ success: true, items });
+  } catch (err: any) {
+    console.error("Error fetching items:", err);
+    return res.status(500).json({ error: err.message || "Failed to fetch items." });
+  }
+});
+
+app.get("/api/items/:id", async (req, res) => {
+  const itemId = req.params.id;
+  if (!itemId) {
+    return res.status(400).json({ error: "Missing itemId" });
+  }
+
+  try {
+    const user = await authenticateRequest(req);
+    const db = getAdminFirestore();
+    const docSnap = await db.collection("items").doc(itemId).get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ error: "Listing not found" });
+    }
+
+    const data = docSnap.data()!;
+    const item = { id: docSnap.id, ...data };
+    const isAdminUser = Boolean(user?.admin);
+    const isOwner = user?.uid && data.reportedBy === user.uid;
+
+    if (data.isDeleted && !isAdminUser && !isOwner) {
+      return res.status(404).json({ error: "Listing not found" });
+    }
+
+    return res.json({ success: true, item });
+  } catch (err: any) {
+    console.error(`Error fetching item ${itemId}:`, err);
+    return res.status(500).json({ error: err.message || "Failed to fetch item." });
   }
 });
 

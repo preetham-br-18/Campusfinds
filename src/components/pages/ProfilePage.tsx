@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/authContext';
 import { useTheme } from '../../lib/themeContext';
+import { CAMPUS_DEPARTMENTS } from '../../lib/constants';
 
 export const ProfilePage: React.FC = () => {
   const { currentUser, profile, updateUserProfile } = useAuth();
@@ -132,14 +133,22 @@ export const ProfilePage: React.FC = () => {
               Department
             </label>
             <div className="relative">
-              <GraduationCap className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-              <input
-                type="text"
+              <GraduationCap className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                placeholder="e.g. Computer Science & Eng."
                 className="w-full pl-10 pr-3 py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
-              />
+              >
+                <option value="">Select Department</option>
+                {CAMPUS_DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+                {department && !CAMPUS_DEPARTMENTS.includes(department) && (
+                  <option value={department}>{department}</option>
+                )}
+              </select>
             </div>
           </div>
 

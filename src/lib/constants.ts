@@ -2,6 +2,17 @@ export const APP_NAME = "CampusFind";
 export const APP_TAGLINE = "Lost it? Find it. Found it? Return it.";
 export const APP_DEVELOPER = "Preetham B R";
 
+export const CAMPUS_DEPARTMENTS = [
+  "CSE",
+  "CSE(AIML)",
+  "CSE(DS)",
+  "ECE",
+  "ISE",
+  "CIVIL",
+  "CYBER SECURITY",
+  "MECHANICAL"
+];
+
 export const DEFAULT_CATEGORIES = [
   "Electronics",
   "Mobile Phones",

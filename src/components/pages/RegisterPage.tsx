@@ -1,24 +1,13 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, Building2, Calendar, IdCard, AlertCircle, ArrowRight, Eye, EyeOff, GraduationCap, CheckCircle2 } from 'lucide-react';
 import { useAuth, formatAuthError } from '../../lib/authContext';
+import { CAMPUS_DEPARTMENTS } from '../../lib/constants';
 
 interface RegisterPageProps {
   navigate: (route: string, params?: Record<string, any>) => void;
 }
 
-const DEPARTMENTS = [
-  'Computer Science & Engineering',
-  'Information Technology',
-  'Electronics & Communication',
-  'Electrical Engineering',
-  'Mechanical Engineering',
-  'Civil Engineering',
-  'Business Administration (MBA / BBA)',
-  'Physics & Mathematics',
-  'Architecture & Design',
-  'Life Sciences & Biotechnology',
-  'Other Campus Department'
-];
+const DEPARTMENTS = CAMPUS_DEPARTMENTS;
 
 const YEARS = [
   '1st Year (Freshman)',

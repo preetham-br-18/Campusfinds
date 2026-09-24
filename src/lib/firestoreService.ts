@@ -57,6 +57,7 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     reportedBy: 'admin-system-seed',
     createdBy: 'admin-system-seed',
     reporterName: 'Campus Security Desk',
+    reporterEmail: 'security@saividya.ac.in',
     imageUrls: [],
     isDeleted: false,
     reportedCount: 0,
@@ -79,6 +80,7 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     reportedBy: 'student-ananya',
     createdBy: 'student-ananya',
     reporterName: 'Ananya Sharma',
+    reporterEmail: 'ananya.s@saividya.ac.in',
     imageUrls: [],
     isDeleted: false,
     reportedCount: 0,
@@ -101,6 +103,7 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     reportedBy: 'admin-system-seed',
     createdBy: 'admin-system-seed',
     reporterName: 'Officer Murthy (Security)',
+    reporterEmail: 'security@saividya.ac.in',
     imageUrls: [],
     isDeleted: false,
     reportedCount: 0,
@@ -123,6 +126,7 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     reportedBy: 'student-karthik',
     createdBy: 'student-karthik',
     reporterName: 'Karthik Rao',
+    reporterEmail: 'karthik.r@saividya.ac.in',
     imageUrls: [],
     isDeleted: false,
     reportedCount: 0,
@@ -145,6 +149,7 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     reportedBy: 'student-rahul',
     createdBy: 'student-rahul',
     reporterName: 'Rahul Verma',
+    reporterEmail: 'rahul.v@saividya.ac.in',
     imageUrls: [],
     isDeleted: false,
     reportedCount: 0,
@@ -167,6 +172,7 @@ export const INITIAL_SAMPLE_ITEMS: Item[] = [
     reportedBy: 'student-sneha',
     createdBy: 'student-sneha',
     reporterName: 'Sneha Patel',
+    reporterEmail: 'sneha.p@saividya.ac.in',
     imageUrls: [],
     isDeleted: false,
     reportedCount: 0,
@@ -411,27 +417,53 @@ export async function softDeleteItemInFirestore(itemId: string): Promise<void> {
 }
 
 export async function getItemByIdFromFirestore(itemId: string): Promise<Item | null> {
-  const path = `items/${itemId}`;
-  const localItem = getStoredItems().find(it => it.id === itemId);
+  if (!itemId) return null;
+  const cleanId = itemId.trim();
+  const path = `items/${cleanId}`;
+  const localItem =
+    getStoredItems().find(it => it.id === cleanId) ||
+    INITIAL_SAMPLE_ITEMS.find(it => it.id === cleanId) ||
+    null;
 
+  // 1. Attempt Firestore direct read
   try {
-    const docRef = doc(db, 'items', itemId);
+    const docRef = doc(db, 'items', cleanId);
     const snapshot = await getDoc(docRef);
     if (snapshot.exists()) {
       const remote = { id: snapshot.id, ...snapshot.data() } as Item;
       // Sync local copy
-      const items = getStoredItems().map(it => it.id === itemId ? remote : it);
-      if (!items.some(it => it.id === itemId)) items.push(remote);
+      const items = getStoredItems().map(it => it.id === cleanId ? remote : it);
+      if (!items.some(it => it.id === cleanId)) items.push(remote);
       setStoredItems(items);
       return remote;
     }
-    return localItem || null;
   } catch (err) {
-    if (isOfflineError(err) || localItem) {
-      return localItem || null;
-    }
-    handleFirestoreError(err, OperationType.GET, path);
+    console.warn(`Notice reading remote item direct SDK for ${cleanId}:`, err);
   }
+
+  // 2. Resilient Server-Side Proxy Fallback
+  try {
+    const headers: Record<string, string> = {};
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`/api/items/${encodeURIComponent(cleanId)}`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.item) {
+        const remote = data.item as Item;
+        const items = getStoredItems().map(it => it.id === cleanId ? remote : it);
+        if (!items.some(it => it.id === cleanId)) items.push(remote);
+        setStoredItems(items);
+        return remote;
+      }
+    }
+  } catch {
+    // fallback to local item
+  }
+
+  return localItem;
 }
 
 /**
@@ -446,6 +478,7 @@ export async function getAllItemsFromFirestore(
   const path = 'items';
   const localItems = getStoredItems();
 
+  // 1. Try Firebase Client SDK
   try {
     const colRef = collection(db, path);
     const snapshot = await getDocs(colRef);
@@ -469,11 +502,41 @@ export async function getAllItemsFromFirestore(
     }
   } catch (err) {
     if (!isOfflineError(err)) {
-      console.warn('Notice loading items from cloud, using local store:', err);
+      console.warn('Notice loading items from client SDK, falling back to server API:', err);
     }
   }
 
-  const filtered = includeDeleted ? localItems : localItems.filter(i => !i.isDeleted);
+  // 2. Try Server API Proxy
+  try {
+    const headers: Record<string, string> = {};
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch('/api/items', { headers });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+        const items: Item[] = data.items;
+        setStoredItems(items);
+        if (isPublicOnly && !includeDeleted) {
+          return items.filter(
+            i => !i.isDeleted && (i.status === 'approved' || i.status === 'resolved' || i.status === 'open')
+          );
+        }
+        return items;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 3. Fallback to combined local store and sample items
+  const combined = [...localItems];
+  for (const s of INITIAL_SAMPLE_ITEMS) {
+    if (!combined.some(c => c.id === s.id)) combined.push(s);
+  }
+  const filtered = includeDeleted ? combined : combined.filter(i => !i.isDeleted);
   const sorted = filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   if (isPublicOnly && !includeDeleted) {
@@ -895,26 +958,26 @@ export async function resolveAbuseReportInFirestore(reportId: string, status: 'r
 export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   const path = 'users';
 
-  // Seed default admin and sample users into local storage if not present
+  // Seed default admin and sample users into local storage if not present (Sai Vidya domain)
   const defaultSampleUsers: UserProfile[] = [
     {
-      uid: 'admin-preetham',
-      name: 'Preetham (Campus Admin)',
-      email: 'preethamirl@gmail.com',
+      uid: 'admin-sai',
+      name: 'Campus Administrator',
+      email: 'admin@saividya.ac.in',
       role: 'admin',
       department: 'Administration',
-      college: 'Campus University',
+      college: 'Sai Vidya Institute of Technology',
       isActive: true,
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 200).toISOString(),
       updatedAt: new Date().toISOString()
     },
     {
-      uid: 'admin-prajju',
-      name: 'Preetham M (Campus Super Admin)',
-      email: 'prajju.m016@gmail.com',
+      uid: 'admin-preetham',
+      name: 'Preetham B R (Campus Admin)',
+      email: 'preethambr.24aiml@saividya.ac.in',
       role: 'superadmin',
-      department: 'Computer Science',
-      college: 'Campus University',
+      department: 'AI & Machine Learning',
+      college: 'Sai Vidya Institute of Technology',
       isActive: true,
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 200).toISOString(),
       updatedAt: new Date().toISOString()
@@ -922,24 +985,28 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
     {
       uid: 'student-ananya',
       name: 'Ananya Sharma',
-      email: 'ananya.s@campus.edu',
+      email: 'ananya.s@saividya.ac.in',
       role: 'student',
       department: 'Electrical Engineering',
       year: '3rd Year',
-      studentId: 'EE2023-045',
+      studentId: '1VA21EE045',
       isActive: true,
+      reportsSubmitted: 1,
+      reportsApproved: 1,
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 150).toISOString(),
       updatedAt: new Date().toISOString()
     },
     {
       uid: 'student-karthik',
       name: 'Karthik Rao',
-      email: 'karthik.r@campus.edu',
+      email: 'karthik.r@saividya.ac.in',
       role: 'student',
       department: 'Mechanical Engineering',
       year: '2nd Year',
-      studentId: 'ME2024-012',
+      studentId: '1VA22ME012',
       isActive: true,
+      reportsSubmitted: 1,
+      reportsApproved: 1,
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 100).toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -949,12 +1016,37 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   try {
     const raw = localStorage.getItem(USERS_KEY);
     if (raw) {
-      localUsers = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        localUsers = parsed;
+      }
     } else {
       localStorage.setItem(USERS_KEY, JSON.stringify(defaultSampleUsers));
     }
   } catch {}
 
+  // 1. Try server admin proxy API
+  try {
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      if (token) {
+        const res = await fetch('/api/admin/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.users) && data.users.length > 0) {
+            setStoredUsers(data.users);
+            return data.users;
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Try Firestore Client SDK
   try {
     const colRef = collection(db, path);
     const snapshot = await getDocs(colRef);
@@ -963,6 +1055,7 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
       snapshot.forEach(docSnap => {
         users.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
       });
+      setStoredUsers(users);
       return users;
     }
   } catch (err) {
@@ -1001,26 +1094,57 @@ export async function updateUserRoleInFirestore(userId: string, role: UserRole):
 
 export async function toggleUserSuspensionInFirestore(userId: string, isActive: boolean): Promise<void> {
   const path = `users/${userId}`;
+  const now = new Date().toISOString();
+
+  // 1. Immediately update local storage cache for instant consistency
   try {
     const raw = localStorage.getItem(USERS_KEY);
     if (raw) {
       const users: UserProfile[] = JSON.parse(raw);
-      const updated = users.map(u => u.uid === userId ? { ...u, isActive, updatedAt: new Date().toISOString() } : u);
+      const updated = users.map(u => u.uid === userId ? { ...u, isActive, updatedAt: now } : u);
       localStorage.setItem(USERS_KEY, JSON.stringify(updated));
     }
   } catch {}
 
+  // 2. Call backend server API with Bearer token (Admin SDK bypasses client permissions & executes immediately)
+  const currentAuth = auth.currentUser;
+  let idToken: string | null = null;
+  if (currentAuth && typeof currentAuth.getIdToken === 'function') {
+    try {
+      idToken = await currentAuth.getIdToken();
+    } catch {}
+  }
+
+  let serverSuccess = false;
+  if (idToken) {
+    try {
+      const res = await fetch('/api/admin/users/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ userId, isActive })
+      });
+      if (res.ok) {
+        serverSuccess = true;
+      }
+    } catch (err) {
+      console.warn('Backend user status API notice:', err);
+    }
+  }
+
+  // 3. Direct Firestore client SDK sync as fallback/additional sync
   try {
     const docRef = doc(db, 'users', userId);
     await updateDoc(docRef, {
       isActive,
-      updatedAt: new Date().toISOString()
+      updatedAt: now
     });
   } catch (err) {
-    if (isOfflineError(err)) {
-      return;
+    if (!serverSuccess && !isOfflineError(err)) {
+      console.warn('Notice syncing user status via Firestore client SDK:', err);
     }
-    handleFirestoreError(err, OperationType.UPDATE, path);
   }
 }
 
@@ -1275,15 +1399,35 @@ export async function restrictUserInFirestore(
   durationHours = 24,
   reason?: string
 ): Promise<void> {
+  const now = new Date().toISOString();
+  const restrictionUntil = restricted ? new Date(Date.now() + durationHours * 3600 * 1000).toISOString() : null;
+
+  // 1. Immediate local storage update
+  try {
+    const users = getStoredUsers();
+    const updated = users.map(u => (u.uid === userId ? {
+      ...u,
+      reportingRestricted: restricted,
+      restrictionUntil,
+      restrictionReason: reason || null,
+      updatedAt: now
+    } : u));
+    setStoredUsers(updated);
+  } catch {}
+
+  // 2. Call backend server API with Bearer token
   const currentAuth = auth.currentUser;
   let idToken: string | null = null;
   if (currentAuth && typeof currentAuth.getIdToken === 'function') {
-    idToken = await currentAuth.getIdToken();
+    try {
+      idToken = await currentAuth.getIdToken();
+    } catch {}
   }
 
+  let serverSuccess = false;
   if (idToken) {
     try {
-      await fetch('/api/admin/users/restrict', {
+      const res = await fetch('/api/admin/users/restrict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1291,32 +1435,26 @@ export async function restrictUserInFirestore(
         },
         body: JSON.stringify({ userId, restricted, durationHours, reason })
       });
+      if (res.ok) {
+        serverSuccess = true;
+      }
     } catch (e) {
-      console.warn('Backend user restriction fallback:', e);
+      console.warn('Backend user restriction API notice:', e);
     }
   }
 
-  // Local update
-  const users = getStoredUsers();
-  const restrictionUntil = restricted ? new Date(Date.now() + durationHours * 3600 * 1000).toISOString() : null;
-  const updated = users.map(u => (u.uid === userId ? {
-    ...u,
-    reportingRestricted: restricted,
-    restrictionUntil,
-    restrictionReason: reason || null
-  } : u));
-  setStoredUsers(updated);
-
+  // 3. Client-side Firestore sync
   try {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
       reportingRestricted: restricted,
       restrictionUntil,
-      restrictionReason: reason || null
+      restrictionReason: reason || null,
+      updatedAt: now
     });
   } catch (err) {
-    if (!isOfflineError(err)) {
-      console.warn('Notice updating user restriction in Firestore:', err);
+    if (!serverSuccess && !isOfflineError(err)) {
+      console.warn('Notice updating user restriction in Firestore SDK:', err);
     }
   }
 }

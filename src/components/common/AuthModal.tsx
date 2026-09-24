@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User, AlertCircle, CheckCircle, GraduationCap, Building2 } from 'lucide-react';
 import { useAuth } from '../../lib/authContext';
+import { CAMPUS_DEPARTMENTS } from '../../lib/constants';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -145,13 +146,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Department
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. CS"
-                    className="w-full px-3 py-3 sm:py-2 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
-                  />
+                    className="w-full px-3 py-3 sm:py-2 text-base sm:text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[46px]"
+                  >
+                    <option value="">Select Department</option>
+                    {CAMPUS_DEPARTMENTS.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
